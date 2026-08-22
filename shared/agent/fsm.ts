@@ -222,7 +222,14 @@ async function handleVerify(
   );
 
   if (poResult.status !== "SUCCESS" || trackingResult.status !== "SUCCESS") {
-    await audit(store, caseRecord.id, agentState.cycle, "AGENT", "STATE_TRANSITION", "VERIFY inconclusive: NO_DATA, will re-check next cycle");
+    const audits = await store.listAuditEvents(caseRecord.id);
+    const verifyNoDataCount = audits.filter(a => a.summary.includes("VERIFY inconclusive: NO_DATA") && a.cycle === agentState.cycle).length;
+    
+    if (verifyNoDataCount >= 2) {
+      return transition(store, caseRecord, agentState, "NO_FEASIBLE_RECOVERY", "unverifiable risk after 3 cycles of NO_DATA");
+    }
+
+    await audit(store, caseRecord.id, agentState.cycle, "AGENT", "STATE_TRANSITION", `VERIFY inconclusive: NO_DATA, will re-check next cycle (attempt ${verifyNoDataCount + 1})`);
     await store.upsertAgentState(agentState);
     return { case: caseRecord, agentState };
   }
@@ -330,6 +337,14 @@ async function handlePlan(
   }
 
   const pendingRejection = agentState.pendingLlmTask;
+  let previousAllocations: { supplierId: string; qty: number; }[] | undefined;
+  if (caseRecord.activePlanVersion > 0) {
+      const activePlan = await store.getActivePlanVersion(caseRecord.id);
+      if (activePlan) {
+          previousAllocations = activePlan.plan.allocations.map(a => ({ supplierId: a.supplierId, qty: a.qty }));
+      }
+  }
+
   const proposedPlan = await llm.proposeRecoveryPlan({
     caseId: caseRecord.id,
     sku: productionOrder.sku,
@@ -338,7 +353,8 @@ async function handlePlan(
     deadlineDate: productionOrder.deadlineDate,
     disruptionSummary: `Existing purchase order(s) for ${productionOrder.sku} will not arrive before the production deadline.`,
     eligibleSuppliers: eligible,
-    previousPlanRejectionReason: pendingRejection
+    previousPlanRejectionReason: pendingRejection,
+    previousPlanAllocations: previousAllocations
   });
   await audit(store, caseRecord.id, agentState.cycle, "AGENT", "LLM_CALL", "Sonnet proposed a recovery plan", {
     allocationCount: proposedPlan.allocations.length,

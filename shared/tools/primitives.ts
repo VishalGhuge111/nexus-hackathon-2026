@@ -6,8 +6,9 @@ import type { Store } from "../db/types";
 import type { ToolResult } from "../types/tools";
 import type { InventoryRecord } from "../types/inventory";
 import type { ProductionOrder } from "../types/production";
-import type { PurchaseOrder } from "../types/procurement";
+import type { PurchaseOrder, RFQ, RfqResponse } from "../types/procurement";
 import type { ApprovalRequest } from "../types/validation";
+import type { SupplierMessage } from "../types/supplier";
 import { DEFAULT_APPROVAL_THRESHOLD } from "../config";
 import { newId } from "../util/id";
 
@@ -175,6 +176,115 @@ export async function outcomeRerereadTool(
     toolName: "outcome_reread",
     status: "SUCCESS",
     data: { inventory, production, purchaseOrders },
+    latencyMs: 0
+  };
+}
+
+export async function rfqRequestTool(
+  store: Store,
+  params: { caseId: string; sku: string; qty: number; neededBy: string; supplierIds: string[] }
+): Promise<ToolResult<RFQ>> {
+  try {
+    const rfq: RFQ = {
+      id: newId("rfq"),
+      caseId: params.caseId,
+      sku: params.sku,
+      qty: params.qty,
+      neededBy: params.neededBy,
+      supplierIds: params.supplierIds,
+      status: "CLOSED", // Auto-generating responses for simulation
+      responses: []
+    };
+
+    for (const supplierId of params.supplierIds) {
+      const supplier = await store.getSupplier(supplierId);
+      if (!supplier) continue;
+      
+      const price = supplier.pricePerUnit[params.sku] ?? Number.POSITIVE_INFINITY;
+      const capacityOffered = Math.min(params.qty, supplier.maxCapacityPerCycle);
+      
+      const response: RfqResponse = {
+        supplierId,
+        price,
+        leadTimeDays: supplier.defaultLeadTimeDays,
+        capacityOffered,
+        expediteAvailable: true,
+        expediteFee: price * 0.2, // 20% premium logic
+        quoteValidHours: 24,
+        quoteReceivedAt: new Date().toISOString()
+      };
+      rfq.responses.push(response);
+    }
+
+    await store.createRfq(rfq);
+
+    return {
+      toolName: "rfq_request",
+      status: "SUCCESS",
+      data: rfq,
+      latencyMs: 0
+    };
+  } catch (err) {
+    return {
+      toolName: "rfq_request",
+      status: "FAILURE",
+      errorReason: err instanceof Error ? err.message : String(err),
+      latencyMs: 0
+    };
+  }
+}
+
+export async function supplierMessageSendTool(
+  store: Store,
+  params: { supplierId: string; caseId: string; subject: string; body: string }
+): Promise<ToolResult<{ sent: boolean; messageId: string }>> {
+  try {
+    const message: SupplierMessage = {
+      id: newId("msg"),
+      supplierId: params.supplierId,
+      caseId: params.caseId,
+      direction: "OUTBOUND",
+      subject: params.subject,
+      body: params.body,
+      sentAt: new Date().toISOString()
+    };
+    await store.createSupplierMessage(message);
+
+    return {
+      toolName: "supplier_message_send",
+      status: "SUCCESS",
+      data: { sent: true, messageId: message.id },
+      latencyMs: 0
+    };
+  } catch (err) {
+    return {
+      toolName: "supplier_message_send",
+      status: "FAILURE",
+      errorReason: err instanceof Error ? err.message : String(err),
+      latencyMs: 0
+    };
+  }
+}
+
+export async function supplierMessageReceiveTool(
+  store: Store,
+  params: { supplierId: string; caseId: string }
+): Promise<ToolResult<SupplierMessage[]>> {
+  const messages = await store.listSupplierMessagesByCase(params.caseId);
+  const inbound = messages.filter((m) => m.supplierId === params.supplierId && m.direction === "INBOUND");
+  
+  if (inbound.length === 0) {
+    return {
+      toolName: "supplier_message_receive",
+      status: "NO_DATA",
+      latencyMs: 0
+    };
+  }
+
+  return {
+    toolName: "supplier_message_receive",
+    status: "SUCCESS",
+    data: inbound,
     latencyMs: 0
   };
 }

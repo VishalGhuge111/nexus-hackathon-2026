@@ -12,6 +12,8 @@ import type {
 } from "../types/procurement";
 import type { ValidationResult, ApprovalRequest } from "../types/validation";
 import type { AuditEvent } from "../types/audit";
+import type { SupplierMessage } from "../types/supplier";
+import type { RFQ } from "../types/procurement";
 
 export interface Store {
   getCase(id: string): Promise<Case | null>;
@@ -36,6 +38,14 @@ export interface Store {
 
   getSupplier(id: string): Promise<Supplier | null>;
   listSuppliers(): Promise<Supplier[]>;
+  updateSupplier(id: string, patch: Partial<Supplier>): Promise<Supplier>;
+
+  createSupplierMessage(msg: SupplierMessage): Promise<void>;
+  listSupplierMessagesByCase(caseId: string): Promise<SupplierMessage[]>;
+
+  createRfq(rfq: RFQ): Promise<void>;
+  listRfqsByCase(caseId: string): Promise<RFQ[]>;
+  updateRfq(id: string, patch: Partial<RFQ>): Promise<RFQ>;
 
   getEmergencyBudget(): Promise<EmergencyBudget>;
   updateEmergencyBudget(patch: Partial<EmergencyBudget>): Promise<EmergencyBudget>;

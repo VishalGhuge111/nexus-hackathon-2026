@@ -22,6 +22,7 @@ export interface PlanProposalRequest {
   disruptionSummary: string;
   eligibleSuppliers: PlanProposalCandidateSupplier[];
   previousPlanRejectionReason?: string;
+  previousPlanAllocations?: ProposedAllocation[];
 }
 
 export interface ProposedAllocation {
