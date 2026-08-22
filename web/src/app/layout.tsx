@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
+import { MissionProvider } from "@/contexts/MissionContext";
 import "./globals.css";
 
 // A dedicated typeface (vs. the default system-font fallback) is one of the
@@ -29,7 +30,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${interSans.variable} ${plexMono.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <MissionProvider>{children}</MissionProvider>
+      </body>
     </html>
   );
 }
