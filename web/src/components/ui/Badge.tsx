@@ -9,7 +9,7 @@ export function Badge({ children, variant = 'default', className = '' }: { child
   };
   
   return (
-    <span className={px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border  }>
+    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${colors[variant]} ${className}`}>
       {children}
     </span>
   );
