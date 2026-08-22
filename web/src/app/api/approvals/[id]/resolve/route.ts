@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   const { id } = await params;
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as { decision?: string; resolvedBy?: string } | null;
   if (!body || (body.decision !== "APPROVED" && body.decision !== "REJECTED")) {
     return Response.json({ error: "body.decision must be APPROVED or REJECTED" }, { status: 400 });
   }
