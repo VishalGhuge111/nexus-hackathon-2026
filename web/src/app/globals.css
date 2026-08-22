@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0b1326;
-  --color-foreground: #dae2fd;
-  --color-card: #171f33;
-  --color-card-foreground: #dae2fd;
-  --color-popover: #222a3d;
-  --color-popover-foreground: #dae2fd;
-  --color-primary: #f97316;
-  --color-primary-foreground: #552100;
-  --color-secondary: #3c4a5e;
-  --color-secondary-foreground: #abb9d1;
-  --color-muted: #131b2e;
-  --color-muted-foreground: #a78b7d;
-  --color-accent: #31394d;
-  --color-accent-foreground: #dae2fd;
-  --color-destructive: #93000a;
-  --color-destructive-foreground: #ffdad6;
-  --color-border: rgba(167, 139, 125, 0.15);
-  --color-input: #131b2e;
-  --color-ring: #f97316;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --color-background: #f9fafb;
+  --color-foreground: #09090b;
+  --color-card: #ffffff;
+  --color-card-foreground: #09090b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #09090b;
+  --color-primary: #18181b;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #18181b;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #18181b;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
 }
 
 @layer base {
