@@ -50,7 +50,7 @@ export function ActiveCasesList({ cases }: { cases: Case[] }) {
                   </Badge>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <Link href={/cases/\} className="text-primary hover:text-primary-foreground hover:bg-primary px-4 py-2 rounded-md transition-all font-bold text-[10px] uppercase tracking-widest">
+                  <Link href={`/cases/${c.id}`} className="text-primary hover:text-primary-foreground hover:bg-primary px-4 py-2 rounded-md transition-all font-bold text-[10px] uppercase tracking-widest">
                     Inspect &rarr;
                   </Link>
                 </td>
