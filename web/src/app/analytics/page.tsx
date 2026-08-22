@@ -1,56 +1,98 @@
-﻿'use client';
-import React from 'react';
-import { BarChart2, TrendingUp, DollarSign, Activity } from 'lucide-react';
+'use client';
+import React, { useEffect, useState } from 'react';
+import { BarChart2, Loader2 } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { WeeklyOpsChart } from '../../components/dashboard/WeeklyOpsChart';
+import { fetchAnalyticsSummary } from '../../lib/api-client';
+import type { AnalyticsSummary } from '../../lib/api-client';
+
+const PERIODS = [4, 8, 12];
 
 export default function AnalyticsPage() {
+  const [weeks, setWeeks] = useState(4);
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSummary(null);
+    fetchAnalyticsSummary(weeks)
+      .then((data) => { if (!cancelled) setSummary(data); })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)); });
+    return () => { cancelled = true; };
+  }, [weeks]);
+
   return (
     <div className="flex-1 overflow-y-auto flex flex-col h-full bg-zinc-50">
       <PageHeader
-        title="Supply Chain Analytics"
-        description="Performance metrics and historical trends."
+        title="Operations Analytics"
+        description="Real aggregations from the Case and AuditEvent log — no invented history."
         icon={<BarChart2 size={20} className="text-purple-500" />}
         showBack={true}
+        actions={
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-lg p-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setWeeks(p)}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${weeks === p ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
+              >
+                {p}w
+              </button>
+            ))}
+          </div>
+        }
       />
-      
-      <div className="p-8 grid grid-cols-2 gap-6">
+
+      <div className="p-8 space-y-6">
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Failed to load analytics: {error}
+          </div>
+        )}
+
         <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center justify-between">
-            Supplier Reliability Trend
-            <Activity size={16} className="text-blue-500" />
-          </h2>
-          <div className="flex items-end gap-2 h-48 pb-2">
-            {[45, 60, 55, 70, 65, 80, 87].map((h, i) => (
-              <div key={i} className="flex-1 bg-blue-100 hover:bg-blue-200 rounded-t-md relative group transition-colors" style={{ height: `${h}%` }}>
-                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-xs py-1 px-2 rounded transition-opacity">
-                  {h}%
-                </div>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">Weekly Operations</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {summary ? `${summary.windowStart.slice(0, 10)} to ${summary.windowEnd.slice(0, 10)} (UTC)` : `Last ${weeks} weeks`}
+              </p>
+            </div>
+          </div>
+
+          {!summary && !error ? (
+            <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-400">
+              <Loader2 size={16} className="animate-spin" /> Loading analytics…
+            </div>
+          ) : summary ? (
+            <WeeklyOpsChart buckets={summary.buckets} />
+          ) : null}
+        </div>
+
+        {summary && (
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            {[
+              { label: 'Cases Created', value: summary.totals.casesCreated },
+              { label: 'Successful Recoveries', value: summary.totals.successfulRecoveries },
+              { label: 'No Feasible Recovery', value: summary.totals.noFeasibleRecoveries },
+              { label: 'Approvals Granted', value: summary.totals.approvalsGranted },
+              { label: 'Approvals Rejected', value: summary.totals.approvalsRejected },
+              { label: 'Validator Rejections', value: summary.totals.failedValidations }
+            ].map((m) => (
+              <div key={m.label} className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm">
+                <p className="text-2xl font-black text-zinc-900 tabular-nums">{m.value}</p>
+                <p className="text-xs text-zinc-500 mt-1">{m.label}</p>
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-xs text-zinc-400 mt-2 border-t border-zinc-100 pt-2">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-          </div>
-        </div>
-        
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center justify-between">
-            Cost Avoidance (Monthly)
-            <TrendingUp size={16} className="text-emerald-500" />
-          </h2>
-          <div className="flex items-end gap-2 h-48 pb-2">
-            {[30, 45, 20, 85, 40, 50, 95].map((h, i) => (
-              <div key={i} className="flex-1 bg-emerald-100 hover:bg-emerald-200 rounded-t-md relative group transition-colors" style={{ height: `${h}%` }}>
-                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-xs py-1 px-2 rounded transition-opacity">
-                  ₹{h}k
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between text-xs text-zinc-400 mt-2 border-t border-zinc-100 pt-2">
-            <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
-          </div>
-        </div>
+        )}
+
+        {summary && (
+          <p className="text-xs text-zinc-400">
+            {summary.totalCasesAllTime} case(s) and {summary.totalAuditEventsAllTime} audit event(s) exist in total (all time, not just this window).
+          </p>
+        )}
       </div>
     </div>
   );

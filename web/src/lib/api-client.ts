@@ -8,6 +8,8 @@ import type { ProductionOrder } from '@nexus/shared/types/production';
 import type { InventoryRecord } from '@nexus/shared/types/inventory';
 import type { PurchaseOrder, RecoveryPlanVersion } from '@nexus/shared/types/procurement';
 import type { Case } from '@nexus/shared/types/case';
+import type { Supplier } from '@nexus/shared/types/supplier';
+import { ORIGINAL_PO_ID } from '@nexus/shared/db/demoSeed';
 
 export type ApprovalDecision = 'APPROVED' | 'REJECTED';
 
@@ -104,8 +106,10 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetail> {
   };
 }
 
-export async function resolveApproval(caseId: string, decision: ApprovalDecision): Promise<{ case: Case }> {
-  const response = await fetch(`/api/approvals/${caseId}/resolve`, {
+// The route path segment is the ApprovalRequest id (see shared/agent/approvals.ts),
+// not the Case id — passing a Case id here 404s ("ApprovalRequest ... not found").
+export async function resolveApproval(approvalRequestId: string, decision: ApprovalDecision): Promise<{ case: Case }> {
+  const response = await fetch(`/api/approvals/${approvalRequestId}/resolve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision, resolvedBy: 'ops-controller' })
@@ -171,4 +175,95 @@ export function usePolling<T>(url: string, intervalMs = 5000) {
     setError(null);
     return payload;
   } };
+}
+
+// ---------------------------------------------------------------------------
+// Real event trigger — POST /api/agent/event (shared/agent/events.ts). This is
+// the same contract the README documents for curl; the UI now offers it as a
+// real control instead of requiring a terminal.
+// ---------------------------------------------------------------------------
+
+export async function triggerShipmentDelay(delayHours = 24): Promise<{ caseId: string; case: Case }> {
+  const response = await fetch('/api/agent/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'SHIPMENT_DELAY', payload: { poId: ORIGINAL_PO_ID, delayHours } })
+  });
+  const json = await response.json();
+  if (!response.ok || !json.caseId) {
+    throw new Error(json.error ?? `Failed to trigger event: ${response.status}`);
+  }
+  return json as { caseId: string; case: Case };
+}
+
+// ---------------------------------------------------------------------------
+// Suppliers / Orders / Audit / Analytics / System status — thin real reads
+// backed by shared/db (see web/src/app/api/**/route.ts for each contract).
+// ---------------------------------------------------------------------------
+
+export async function fetchSuppliers(): Promise<Supplier[]> {
+  const response = await fetch('/api/suppliers');
+  if (!response.ok) throw new Error(`Failed to load suppliers: ${response.status}`);
+  const json = (await response.json()) as { suppliers: Supplier[] };
+  return json.suppliers;
+}
+
+export async function fetchOrders(): Promise<PurchaseOrder[]> {
+  const response = await fetch('/api/orders');
+  if (!response.ok) throw new Error(`Failed to load orders: ${response.status}`);
+  const json = (await response.json()) as { purchaseOrders: PurchaseOrder[] };
+  return json.purchaseOrders;
+}
+
+export async function fetchAllAuditEvents(): Promise<AuditEvent[]> {
+  const response = await fetch('/api/audit');
+  if (!response.ok) throw new Error(`Failed to load audit log: ${response.status}`);
+  const json = (await response.json()) as { auditEvents: AuditEvent[] };
+  return json.auditEvents;
+}
+
+export interface AnalyticsWeekBucket {
+  weekStart: string;
+  weekEnd: string;
+  casesCreated: number;
+  successfulRecoveries: number;
+  noFeasibleRecoveries: number;
+  approvalsGranted: number;
+  approvalsRejected: number;
+  failedValidations: number;
+}
+
+export interface AnalyticsSummary {
+  weeks: number;
+  windowStart: string;
+  windowEnd: string;
+  totalCasesAllTime: number;
+  totalAuditEventsAllTime: number;
+  buckets: AnalyticsWeekBucket[];
+  totals: Omit<AnalyticsWeekBucket, 'weekStart' | 'weekEnd'>;
+}
+
+export async function fetchAnalyticsSummary(weeks = 4): Promise<AnalyticsSummary> {
+  const response = await fetch(`/api/analytics/summary?weeks=${weeks}`);
+  if (!response.ok) throw new Error(`Failed to load analytics: ${response.status}`);
+  return (await response.json()) as AnalyticsSummary;
+}
+
+export interface SystemStatus {
+  database: { mode: 'neon' | 'memory'; configured: boolean; description: string };
+  llm: { mode: 'anthropic' | 'stub'; configured: boolean; model: string | null; description: string };
+  agentConfig: {
+    maxToolCallsPerCase: number;
+    maxReplans: number;
+    approvalThreshold: number;
+    minSupplierQualityForCase: number;
+    minSupplierReliabilityForCase: number;
+  };
+  runtime: { nodeVersion: string; environment: string };
+}
+
+export async function fetchSystemStatus(): Promise<SystemStatus> {
+  const response = await fetch('/api/system/status');
+  if (!response.ok) throw new Error(`Failed to load system status: ${response.status}`);
+  return (await response.json()) as SystemStatus;
 }

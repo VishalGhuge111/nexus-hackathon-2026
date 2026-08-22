@@ -1,12 +1,10 @@
 ﻿'use client';
 import React, { useState } from 'react';
-import { Bell, ShieldCheck, AlertTriangle, ShieldAlert, FileWarning, Settings, User } from 'lucide-react';
-import { useMission, type ScenarioType } from '../../contexts/MissionContext';
+import { Bell, ShieldCheck, User } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { bus } from '../../events/eventBus';
 
 export function TopNav() {
-  const { scenario, setScenario } = useMission();
   const { notifications, unreadCount, markAllRead } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
 
@@ -19,19 +17,6 @@ export function TopNav() {
           </div>
           <span className="font-bold text-lg tracking-tight">NEXUS</span>
         </div>
-        <div className="h-4 w-px bg-zinc-800 mx-2"></div>
-        
-        {/* Scenario Switcher for Demo Purposes */}
-        <select 
-          value={scenario}
-          onChange={(e) => bus.publish('SCENARIO_CHANGED', { scenario: e.target.value as ScenarioType })}
-          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:outline-none focus:border-blue-500"
-        >
-          <option value="HEALTHY">HEALTHY</option>
-          <option value="WARNING">EARLY WARNING</option>
-          <option value="RECOVERY">RECOVERY</option>
-          <option value="APPROVAL">APPROVAL</option>
-        </select>
       </div>
 
       <div className="flex items-center gap-4">

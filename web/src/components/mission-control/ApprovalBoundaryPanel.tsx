@@ -114,7 +114,7 @@ export function ApprovalBoundaryPanel({
               >
                 Reject
               </button>
-              <span className="text-[11px] text-slate-600">demo shell — recorded locally, not persisted</span>
+              {!isLive && <span className="text-[11px] text-slate-600">demo shell — recorded locally, not persisted</span>}
             </div>
           ) : (
             <p className="text-xs text-slate-500">Resolved locally in this demo shell as {decision}.</p>

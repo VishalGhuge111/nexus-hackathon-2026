@@ -72,6 +72,10 @@ export class MemoryStore implements Store {
     return [...this.cases.values()].filter((c) => !terminal.has(c.status)).map((c) => structuredClone(c));
   }
 
+  async listAllCases(): Promise<Case[]> {
+    return [...this.cases.values()].map((c) => structuredClone(c));
+  }
+
   async findCaseByProductionOrder(productionOrderId: string): Promise<Case | null> {
     const terminal = new Set(["GOAL_ACHIEVED", "NO_FEASIBLE_RECOVERY"]);
     const found = [...this.cases.values()].find(
@@ -132,6 +136,10 @@ export class MemoryStore implements Store {
 
   async listPurchaseOrdersByCase(caseId: string): Promise<PurchaseOrder[]> {
     return [...this.purchaseOrders.values()].filter((p) => p.caseId === caseId).map((p) => structuredClone(p));
+  }
+
+  async listAllPurchaseOrders(): Promise<PurchaseOrder[]> {
+    return [...this.purchaseOrders.values()].map((p) => structuredClone(p));
   }
 
   async createPurchaseOrder(po: PurchaseOrder): Promise<PurchaseOrder> {
@@ -263,5 +271,9 @@ export class MemoryStore implements Store {
 
   async listAuditEvents(caseId: string): Promise<AuditEvent[]> {
     return this.auditEvents.filter((e) => e.caseId === caseId).map((e) => structuredClone(e));
+  }
+
+  async listAllAuditEvents(): Promise<AuditEvent[]> {
+    return this.auditEvents.map((e) => structuredClone(e));
   }
 }

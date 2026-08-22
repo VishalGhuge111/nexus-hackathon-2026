@@ -271,6 +271,11 @@ export class PrismaStore implements Store {
     return rows.map(toCase);
   }
 
+  async listAllCases(): Promise<Case[]> {
+    const rows = await this.prisma.case.findMany();
+    return rows.map(toCase);
+  }
+
   async findCaseByProductionOrder(productionOrderId: string): Promise<Case | null> {
     const row = await this.prisma.case.findFirst({
       where: { productionOrderId, status: { in: [...ACTIVE_CASE_STATUSES] } }
@@ -394,6 +399,11 @@ export class PrismaStore implements Store {
 
   async listPurchaseOrdersByCase(caseId: string): Promise<PurchaseOrder[]> {
     const rows = await this.prisma.purchaseOrder.findMany({ where: { caseId } });
+    return rows.map(toPurchaseOrder);
+  }
+
+  async listAllPurchaseOrders(): Promise<PurchaseOrder[]> {
+    const rows = await this.prisma.purchaseOrder.findMany();
     return rows.map(toPurchaseOrder);
   }
 
@@ -728,6 +738,11 @@ export class PrismaStore implements Store {
       where: { caseId },
       orderBy: { timestamp: "asc" }
     });
+    return rows.map(toAuditEvent);
+  }
+
+  async listAllAuditEvents(): Promise<AuditEvent[]> {
+    const rows = await this.prisma.auditEvent.findMany({ orderBy: { timestamp: "asc" } });
     return rows.map(toAuditEvent);
   }
 }
