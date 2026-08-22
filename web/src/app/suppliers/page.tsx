@@ -1,5 +1,7 @@
-﻿import React from 'react';
-import { Building2, Search, Filter, Shield, AlertTriangle } from 'lucide-react';
+﻿'use client';
+import React from 'react';
+import { Building2, Filter, Shield, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 const MOCK_SUPPLIERS = [
   { id: 'SUP-001', name: 'Supplier A', tier: 'Tier 1', risk: 'Low', reliability: 98, leadTime: '2-4 Days', region: 'North America' },
@@ -12,27 +14,22 @@ const MOCK_SUPPLIERS = [
 export default function SuppliersPage() {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col h-full bg-zinc-50">
-      <div className="bg-white border-b border-zinc-200 px-8 py-6 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Building2 size={20} className="text-blue-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Supplier Network</h1>
-              <p className="text-sm text-zinc-500 font-medium">Manage and monitor supplier risk and reliability metrics.</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md text-sm font-medium text-zinc-600 hover:bg-zinc-50">
+      <PageHeader
+        title="Supplier Network"
+        description="Manage and monitor supplier risk and reliability metrics."
+        icon={<Building2 size={20} className="text-blue-500" />}
+        showBack={true}
+        actions={
+          <>
+            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md text-sm font-medium text-zinc-600 hover:bg-zinc-50 shadow-sm">
               <Filter size={16} /> Filter
             </button>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-bold hover:bg-blue-700 shadow-sm">
               Add Supplier
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
       
       <div className="p-8">
         <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">

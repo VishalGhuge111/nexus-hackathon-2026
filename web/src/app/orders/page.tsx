@@ -1,5 +1,7 @@
-﻿import React from 'react';
+﻿'use client';
+import React from 'react';
 import { FileText, Filter, MoreHorizontal, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 const MOCK_ORDERS = [
   { id: 'PO-2026-X1', customer: 'Global Motors', items: 420, value: '₹24.5L', status: 'On Track', date: '2026-08-25' },
@@ -11,22 +13,17 @@ const MOCK_ORDERS = [
 export default function OrdersPage() {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col h-full bg-zinc-50">
-      <div className="bg-white border-b border-zinc-200 px-8 py-6 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
-              <FileText size={20} className="text-indigo-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Production Orders</h1>
-              <p className="text-sm text-zinc-500 font-medium">Manage and track customer order fulfillment.</p>
-            </div>
-          </div>
-          <button className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md text-sm font-medium text-zinc-600 hover:bg-zinc-50">
+      <PageHeader
+        title="Production Orders"
+        description="Manage and track customer order fulfillment."
+        icon={<FileText size={20} className="text-indigo-500" />}
+        showBack={true}
+        actions={
+          <button className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md text-sm font-medium text-zinc-600 hover:bg-zinc-50 shadow-sm">
             <Filter size={16} /> Filter
           </button>
-        </div>
-      </div>
+        }
+      />
       
       <div className="p-8">
         <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
