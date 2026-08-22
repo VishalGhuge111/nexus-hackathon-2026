@@ -6,14 +6,26 @@ import type { RecoveryPlanVersion } from "@nexus/shared/types/procurement";
 import { Panel } from "./Panel";
 import { StatusPill } from "./StatusPill";
 
-export function PlanVersionLineage({ versions }: { versions: RecoveryPlanVersion[] }): React.ReactElement {
+export function PlanVersionLineage({
+  versions
+}: {
+  // Both call sites (the live /api/cases/:id route via store.listPlanVersions,
+  // and the static demo fixture) already carry a genuinely unique `id` on every
+  // record — the shared RecoveryPlanVersion domain type itself has no id field
+  // (persistence identity is a Store-layer concern, not a PRD domain concept),
+  // so this prop type declares what's actually passed in rather than the
+  // narrower domain type, which was silently discarding `id` and forcing the
+  // component to key by the numeric `version` instead (not guaranteed unique —
+  // see the React key below).
+  versions: (RecoveryPlanVersion & { id: string })[];
+}): React.ReactElement {
   const sorted = [...versions].sort((a, b) => a.version - b.version);
 
   return (
     <Panel title="Plan Version Lineage (V1 → V2)" subtitle="Replanning preserves state — nothing restarts from scratch (§23)">
       <div className="space-y-4">
         {sorted.map((version) => (
-          <div key={version.version} className="rounded border border-slate-800 p-3">
+          <div key={version.id} className="rounded border border-slate-800 p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="font-mono text-sm text-slate-200">
                 V{version.version}
