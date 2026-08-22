@@ -136,6 +136,7 @@ function toSupplier(row: {
   reliabilityScore: number;
   qualityScore: number;
   pricePerUnit: unknown;
+  hasOpenContradiction?: boolean | null;
 }): Supplier {
   return {
     id: row.id,
@@ -146,7 +147,8 @@ function toSupplier(row: {
     defaultLeadTimeDays: row.defaultLeadTimeDays,
     reliabilityScore: row.reliabilityScore,
     qualityScore: row.qualityScore,
-    pricePerUnit: row.pricePerUnit as Record<string, number>
+    pricePerUnit: row.pricePerUnit as Record<string, number>,
+    hasOpenContradiction: row.hasOpenContradiction ?? undefined
   };
 }
 
@@ -392,6 +394,23 @@ export class PrismaStore implements Store {
     return row ? toInventoryRecord(row) : null;
   }
 
+  async updateInventoryRecordBySku(sku: string, patch: Partial<InventoryRecord>): Promise<InventoryRecord> {
+    const existing = await this.prisma.inventoryRecord.findFirst({ where: { sku } });
+    if (!existing) throw new Error(`InventoryRecord for sku ${sku} not found`);
+    const row = await this.prisma.inventoryRecord.update({
+      where: { id: existing.id },
+      data: {
+        ...(patch.currentStock !== undefined ? { currentStock: patch.currentStock } : {}),
+        ...(patch.usableStock !== undefined ? { usableStock: patch.usableStock } : {}),
+        ...(patch.dailyUsageRate !== undefined ? { dailyUsageRate: patch.dailyUsageRate } : {}),
+        ...(patch.safetyStockThreshold !== undefined ? { safetyStockThreshold: patch.safetyStockThreshold } : {}),
+        ...(patch.stockDiscrepancyFlag !== undefined ? { stockDiscrepancyFlag: patch.stockDiscrepancyFlag } : {}),
+        lastUpdatedAt: new Date()
+      }
+    });
+    return toInventoryRecord(row);
+  }
+
   async getPurchaseOrder(id: string): Promise<PurchaseOrder | null> {
     const row = await this.prisma.purchaseOrder.findUnique({ where: { id } });
     return row ? toPurchaseOrder(row) : null;
@@ -460,7 +479,8 @@ export class PrismaStore implements Store {
         ...(patch.defaultLeadTimeDays !== undefined ? { defaultLeadTimeDays: patch.defaultLeadTimeDays } : {}),
         ...(patch.reliabilityScore !== undefined ? { reliabilityScore: patch.reliabilityScore } : {}),
         ...(patch.qualityScore !== undefined ? { qualityScore: patch.qualityScore } : {}),
-        ...(patch.pricePerUnit !== undefined ? { pricePerUnit: patch.pricePerUnit } : {})
+        ...(patch.pricePerUnit !== undefined ? { pricePerUnit: patch.pricePerUnit } : {}),
+        ...(patch.hasOpenContradiction !== undefined ? { hasOpenContradiction: patch.hasOpenContradiction } : {})
       }
     });
     return toSupplier(row);

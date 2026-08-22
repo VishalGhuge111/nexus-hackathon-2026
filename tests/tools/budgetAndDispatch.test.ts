@@ -69,10 +69,10 @@ describe("PRD §13a — Tool Budget and Dispatch Choke Point", () => {
     expect(agentState.toolCallCount).toBe(2);
   });
 
-  it("enforces hard budget cap MAX_TOOL_CALLS_PER_CASE (12) and refuses subsequent calls", async () => {
-    expect(MAX_TOOL_CALLS_PER_CASE).toBe(12);
+  it("enforces hard budget cap MAX_TOOL_CALLS_PER_CASE (16) and refuses subsequent calls", async () => {
+    expect(MAX_TOOL_CALLS_PER_CASE).toBe(16);
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < MAX_TOOL_CALLS_PER_CASE; i++) {
       const res = await dispatchTool(ctx, `mock_tool_${i}`, async () => ({
         toolName: `mock_tool_${i}`,
         status: "SUCCESS",
@@ -82,19 +82,19 @@ describe("PRD §13a — Tool Budget and Dispatch Choke Point", () => {
       expect(res.status).toBe("SUCCESS");
     }
 
-    expect(agentState.toolCallCount).toBe(12);
+    expect(agentState.toolCallCount).toBe(MAX_TOOL_CALLS_PER_CASE);
 
-    // 13th call must be blocked with BUDGET_EXHAUSTED
-    const blockedRes = await dispatchTool(ctx, "mock_tool_13", async () => ({
-      toolName: "mock_tool_13",
+    // (N+1)th call must be blocked with BUDGET_EXHAUSTED
+    const blockedRes = await dispatchTool(ctx, "mock_tool_overflow", async () => ({
+      toolName: "mock_tool_overflow",
       status: "SUCCESS",
-      data: 13,
+      data: -1,
       latencyMs: 1
     }));
 
     expect(blockedRes.status).toBe("FAILURE");
     expect(blockedRes.errorReason).toBe("BUDGET_EXHAUSTED");
-    expect(agentState.toolCallCount).toBe(12); // Count does not increment past max
+    expect(agentState.toolCallCount).toBe(MAX_TOOL_CALLS_PER_CASE); // Count does not increment past max
 
     const auditEvents = await store.listAuditEvents("case-budget-test");
     const lastAudit = auditEvents[auditEvents.length - 1];

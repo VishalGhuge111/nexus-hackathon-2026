@@ -129,6 +129,14 @@ export class MemoryStore implements Store {
     return i ? structuredClone(i) : null;
   }
 
+  async updateInventoryRecordBySku(sku: string, patch: Partial<InventoryRecord>): Promise<InventoryRecord> {
+    const existing = this.inventoryBySku.get(sku);
+    if (!existing) throw new Error(`InventoryRecord for sku ${sku} not found`);
+    const updated = { ...existing, ...patch };
+    this.inventoryBySku.set(sku, updated);
+    return structuredClone(updated);
+  }
+
   async getPurchaseOrder(id: string): Promise<PurchaseOrder | null> {
     const p = this.purchaseOrders.get(id);
     return p ? structuredClone(p) : null;

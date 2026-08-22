@@ -8,6 +8,8 @@ export interface Supplier {
 	reliabilityScore: number;
 	qualityScore: number;
 	pricePerUnit: Record<string, number>;
+	/** §17 eligibility input — set by a verified tracking/supplier-claim mismatch (see SUPPLIER_CLAIM_CONTRADICTION event). Defaults to false/undefined for every seeded supplier. */
+	hasOpenContradiction?: boolean;
 }
 
 export interface SupplierMessage {

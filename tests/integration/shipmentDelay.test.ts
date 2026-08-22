@@ -9,6 +9,7 @@ import { applyShipmentDelayEvent } from "@nexus/shared/agent/events";
 import { runAgentTick } from "@nexus/shared/agent/fsm";
 import { resolveApproval } from "@nexus/shared/agent/approvals";
 import { StubLlmClient } from "@nexus/shared/llm/stubClient";
+import { MAX_TOOL_CALLS_PER_CASE } from "@nexus/shared/config";
 import type { Store } from "@nexus/shared/db/types";
 import type { Case } from "@nexus/shared/types/case";
 
@@ -112,6 +113,6 @@ describe("Shipment Delay 24h vertical slice", () => {
     const { caseId } = await applyShipmentDelayEvent(store, { poId: ORIGINAL_PO_ID, delayHours: 24 }, NOW);
     const final = await tickUntil(store, llm, caseId, ["HUMAN_ESCALATED_AWAITING_DECISION"]);
     const agentState = await store.getAgentState(final.id);
-    expect(agentState!.toolCallCount).toBeLessThanOrEqual(12);
+    expect(agentState!.toolCallCount).toBeLessThanOrEqual(MAX_TOOL_CALLS_PER_CASE);
   });
 });

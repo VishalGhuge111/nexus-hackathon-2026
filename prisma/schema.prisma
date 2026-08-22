@@ -146,6 +146,7 @@ model Supplier {
   reliabilityScore      Float
   qualityScore          Float
   pricePerUnit          Json
+  hasOpenContradiction  Boolean? @default(false)
   purchaseOrders        PurchaseOrder[]
   messages              SupplierMessage[]
 }

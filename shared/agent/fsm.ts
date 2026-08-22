@@ -9,7 +9,7 @@ import type { Case } from "../types/case";
 import type { AgentState } from "../types/agent";
 import type { LlmClient } from "../llm/types";
 import type { RecoveryPlan } from "../types/procurement";
-import { coverageDays, safetyStockRisk, deadlineSlack, productionRequirement, recoveryCost } from "../calculations";
+import { coverageDays, safetyStockRisk, deadlineSlack, productionRequirement, recoveryCost, hasStockDiscrepancy } from "../calculations";
 import { evaluateEarlyRiskSignals, shouldOpenEarlyWarning } from "./earlyRiskMonitor";
 import { supplierEligibilityCheck } from "../supplier/eligibility";
 import { validateRecoveryPlan } from "../validator/validate";
@@ -20,7 +20,8 @@ import {
   approvalCheckTool,
   erpUpdateTool,
   escalationCreateTool,
-  outcomeRerereadTool
+  outcomeRerereadTool,
+  rfqRequestTool
 } from "../tools/primitives";
 import { dispatchTool } from "../tools/dispatch";
 import { newId } from "../util/id";
@@ -31,7 +32,7 @@ export interface AgentDeps {
   llm: LlmClient;
 }
 
-const REQUIRED_CERTIFICATIONS = ["ISO9001"]; // simplification: one cert regime per SKU in this fixture
+export const REQUIRED_CERTIFICATIONS = ["ISO9001"]; // simplification: one cert regime per SKU in this fixture
 
 async function audit(
   store: Store,
@@ -184,6 +185,24 @@ async function handleEarlyRiskCheck(
   }
 
   const inventory = inventoryResult.data;
+
+  // PS Scenario 2 ("Stale Inventory") — the discrepancy itself never changes any
+  // downstream math (coverage/shortage/validator all already read usableStock
+  // only, per the file header of shared/calculations/coverage.ts); this only
+  // makes an already-correct computation's evidence visible in the audit trail
+  // instead of silently discarding it.
+  if (inventory.stockDiscrepancyFlag && hasStockDiscrepancy(inventory.currentStock, inventory.usableStock)) {
+    await audit(
+      store,
+      caseRecord.id,
+      agentState.cycle,
+      "AGENT",
+      "STATE_TRANSITION",
+      `Inventory discrepancy detected: ERP reports ${inventory.currentStock} units of ${inventory.sku}, but warehouse-confirmed usable stock is only ${inventory.usableStock} — all coverage/shortage math below uses usableStock only`,
+      { sku: inventory.sku, currentStock: inventory.currentStock, usableStock: inventory.usableStock }
+    );
+  }
+
   const coverage = coverageDays({ usableStock: inventory.usableStock, dailyUsageRate: inventory.dailyUsageRate });
   const safety = safetyStockRisk({
     usableStock: inventory.usableStock,
@@ -362,7 +381,7 @@ async function handlePlan(
           reliabilityScore: supplier.reliabilityScore,
           qualityScore: supplier.qualityScore,
           leadTimeDays: supplier.defaultLeadTimeDays,
-          hasOpenContradiction: false
+          hasOpenContradiction: supplier.hasOpenContradiction ?? false
         },
         {
           requiredCertifications: REQUIRED_CERTIFICATIONS,
@@ -387,6 +406,19 @@ async function handlePlan(
         maxCapacityPerCycle: supplier.maxCapacityPerCycle,
         moq: supplier.moq
       });
+    } else if (eligibilityResult.data && !eligibilityResult.data.eligible) {
+      // Observability only — the eligibility gate itself already excluded this
+      // supplier above; this just makes the "why" (PS §4.10 audit requirement)
+      // readable in the trail instead of silently discarding `.reasons`.
+      await audit(
+        store,
+        caseRecord.id,
+        agentState.cycle,
+        "AGENT",
+        "STATE_TRANSITION",
+        `Rejected supplier ${supplier.name}: ${eligibilityResult.data.reasons.join("; ")}`,
+        { supplierId: supplier.id, reasons: eligibilityResult.data.reasons }
+      );
     }
   }
 
@@ -395,6 +427,23 @@ async function handlePlan(
       continuityImpact: { unitsAtRisk: shortageQty, deadlineBreached: true }
     });
     return transition(store, caseRecord, agentState, "NO_FEASIBLE_RECOVERY", "no eligible supplier can cover the shortage");
+  }
+
+  // PS §4.6/5.7 — real supplier quote comparison. Requested once per case (not
+  // once per PLAN/replan cycle): the quotes are still within their
+  // quoteValidHours window for a replan of the same shortage, so re-requesting
+  // on every V2/V3 attempt would burn tool-call budget for identical numbers.
+  const existingRfqs = await store.listRfqsByCase(caseRecord.id);
+  if (existingRfqs.length === 0) {
+    await dispatchTool(dispatchCtx, "rfq_request", () =>
+      rfqRequestTool(store, {
+        caseId: caseRecord.id,
+        sku: productionOrder.sku,
+        qty: shortageQty,
+        neededBy: productionOrder.deadlineDate,
+        supplierIds: eligible.map((s) => s.supplierId)
+      })
+    );
   }
 
   const pendingRejection = agentState.pendingLlmTask;

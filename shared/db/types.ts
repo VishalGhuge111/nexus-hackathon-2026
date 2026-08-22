@@ -32,6 +32,8 @@ export interface Store {
   findProductionOrderBySku(sku: string): Promise<ProductionOrder | null>;
 
   getInventoryRecordBySku(sku: string): Promise<InventoryRecord | null>;
+  /** Ground-truth mutation for demand-spike-style events (§31) — e.g. dailyUsageRate. */
+  updateInventoryRecordBySku(sku: string, patch: Partial<InventoryRecord>): Promise<InventoryRecord>;
 
   getPurchaseOrder(id: string): Promise<PurchaseOrder | null>;
   listPurchaseOrdersByCase(caseId: string): Promise<PurchaseOrder[]>;

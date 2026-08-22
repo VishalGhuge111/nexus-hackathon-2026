@@ -5,12 +5,33 @@ import { GET as handleGetCase } from "../../web/src/app/api/cases/[id]/route";
 import { GET as handleGetDashboard } from "../../web/src/app/api/dashboard/summary/route";
 import { POST as handleResolveApproval } from "../../web/src/app/api/approvals/[id]/resolve/route";
 import { resetStoreForTests } from "@nexus/shared/db/factory";
-import { ORIGINAL_PO_ID } from "@nexus/shared/db/demoSeed";
+import { MemoryStore } from "@nexus/shared/db/memoryStore";
+import { buildDemoFixture, ORIGINAL_PO_ID } from "@nexus/shared/db/demoSeed";
 
 describe("PRD §27 — API Route Integration Tests", () => {
   beforeEach(() => {
-    // Reset process-wide in-memory store before each test
-    resetStoreForTests(undefined);
+    // Every test below drives the real route handlers through a brand-new
+    // Case (each independently triggers its own SHIPMENT_DELAY). Passing
+    // `undefined` here only clears getStore()'s cached singleton reference —
+    // it does NOT guarantee a fresh store: whenever DATABASE_URL is set (e.g.
+    // a local dev environment with Neon configured), the very next getStore()
+    // call inside the route handler immediately recreates a PrismaStore
+    // pointed at the same persistent rows as every other test in this file,
+    // so a later test's "fresh" event silently reuses whatever case an
+    // earlier test already advanced. Passing an actual fresh, seeded
+    // MemoryStore makes every test deterministic regardless of the runtime
+    // environment's DATABASE_URL — matching what "reset...before each test"
+    // was always meant to guarantee.
+    const fixture = buildDemoFixture(new Date());
+    resetStoreForTests(
+      new MemoryStore({
+        productionOrders: [fixture.productionOrder],
+        inventoryRecords: [fixture.inventoryRecord],
+        suppliers: fixture.suppliers,
+        purchaseOrders: fixture.purchaseOrders,
+        emergencyBudget: fixture.emergencyBudget
+      })
+    );
   });
 
   describe("POST /api/agent/event", () => {
