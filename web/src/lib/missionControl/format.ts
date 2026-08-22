@@ -19,3 +19,16 @@ export function formatTimeUTC(iso: string): string {
 export function formatINR(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
+
+/**
+ * Display-only rounding for RiskSignal.value/threshold. Live values are real
+ * floating-point results (e.g. a deadline-slack computation landing on
+ * -3.47e-8 instead of exactly 0) — toFixed keeps the UI readable without
+ * touching the underlying calculation. Normalizes "-0.00" (tiny negative
+ * floats rounding through zero) to "0.00" so near-zero results don't display
+ * a misleading negative sign.
+ */
+export function formatSignalValue(value: number): string {
+  const fixed = value.toFixed(2);
+  return fixed === "-0.00" ? "0.00" : fixed;
+}

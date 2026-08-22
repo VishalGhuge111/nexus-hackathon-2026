@@ -21,32 +21,49 @@ const BRANCH_NODES: { id: CaseStatus; edge: string }[] = [
   { id: "NO_FEASIBLE_RECOVERY", edge: "ADAPT_REPLAN: no supplier/plan satisfies constraints after the replan cap" }
 ];
 
-function nodeClasses(isCurrent: boolean, isTerminalGood: boolean, isTerminalBad: boolean): string {
-  if (isCurrent) return "border-sky-500 bg-sky-950 text-sky-200 ring-1 ring-sky-500";
-  if (isTerminalGood) return "border-emerald-800 bg-emerald-950/40 text-emerald-400";
+function nodeClasses(isCurrent: boolean, isCompleted: boolean, isTerminalGood: boolean, isTerminalBad: boolean): string {
+  if (isCurrent) return "border-sky-500 bg-sky-950 text-sky-200 ring-2 ring-sky-500/40";
+  if (isCompleted && isTerminalGood) return "border-emerald-700 bg-emerald-950/50 text-emerald-300";
+  if (isCompleted) return "border-emerald-900/60 bg-emerald-950/20 text-emerald-500/80";
   if (isTerminalBad) return "border-red-900 bg-red-950/30 text-red-400";
-  return "border-slate-800 bg-slate-900/60 text-slate-400";
+  return "border-slate-800 bg-slate-900/60 text-slate-500";
 }
 
 export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus }): React.ReactElement {
+  // A step already passed through reads as "done" (muted emerald) rather than
+  // identical to a step never reached yet (dim slate) — the whole point of a
+  // pipeline view is to show progress, not just a static diagram with one dot
+  // lit up. MONITORING/EARLY_RISK_CHECK have no live equivalent in this
+  // reactive event-driven slice (case creation starts the case straight at
+  // VERIFY), so they only ever render as "not reached" or, once the case has
+  // moved on, implicitly completed.
+  const currentIndex = MAIN_PATH.indexOf(currentStatus);
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        {MAIN_PATH.map((status, i) => (
-          <div key={status} className="flex items-center gap-2">
-            <div
-              className={`rounded border px-2.5 py-1.5 font-mono text-xs font-medium ${nodeClasses(
-                status === currentStatus,
-                status === "GOAL_ACHIEVED",
-                false
-              )}`}
-            >
-              {status.replace(/_/g, " ")}
-              {status === currentStatus && <span className="ml-1.5 text-sky-400">● live</span>}
+        {MAIN_PATH.map((status, i) => {
+          const isCurrent = status === currentStatus;
+          const isCompleted = !isCurrent && currentIndex !== -1 && i < currentIndex;
+          return (
+            <div key={status} className="flex items-center gap-2">
+              <div
+                className={`rounded border px-2.5 py-1.5 font-mono text-xs font-medium ${nodeClasses(
+                  isCurrent,
+                  isCompleted,
+                  status === "GOAL_ACHIEVED",
+                  false
+                )}`}
+              >
+                {isCompleted && <span className="mr-1 text-emerald-500">✓</span>}
+                {status.replace(/_/g, " ")}
+                {isCurrent && <span className="ml-1.5 text-sky-400">● live</span>}
+              </div>
+              {i < MAIN_PATH.length - 1 && (
+                <span className={isCompleted ? "text-emerald-800" : "text-slate-700"}>&rarr;</span>
+              )}
             </div>
-            {i < MAIN_PATH.length - 1 && <span className="text-slate-700">&rarr;</span>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-3 space-y-1.5 border-t border-slate-800 pt-3">
@@ -56,6 +73,7 @@ export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus
             <div
               className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[11px] font-medium ${nodeClasses(
                 branch.id === currentStatus,
+                false,
                 false,
                 branch.id === "NO_FEASIBLE_RECOVERY"
               )}`}

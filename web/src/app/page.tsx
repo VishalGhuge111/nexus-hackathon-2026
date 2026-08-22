@@ -252,7 +252,8 @@ export default function Page(): React.ReactElement {
 
       <div className="mx-auto max-w-[2200px] px-6 py-6">
         {/* LEVEL 1 — the demo story: active incident, agent state, recovery plan, approval boundary */}
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[280px_1fr_420px] md:gap-6">
+        <div className="mb-3 text-[11px] font-semibold tracking-widest text-slate-600 uppercase">Active incident</div>
+        <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-[280px_1fr_1fr] md:gap-6">
           <div className="space-y-5">
             <CaseListPanel
               cases={displayCases}
@@ -272,7 +273,7 @@ export default function Page(): React.ReactElement {
                 {displayAgentState && <LiveAgentTracePanel agentState={displayAgentState} auditEvents={displayAuditEvents} />}
               </>
             ) : (
-              <p className="rounded border border-slate-800 p-4 text-sm text-slate-500">
+              <p className="rounded-lg border border-slate-800 p-4 text-sm text-slate-500">
                 {isLive ? "Waiting for the first agent cycle…" : "Select the active case above."}
               </p>
             )}
@@ -286,28 +287,38 @@ export default function Page(): React.ReactElement {
                 comparison={(isLive ? liveDetail?.doNothingVsNexus : null) ?? staticDoNothingVsNexus}
               />
             ) : (
-              <p className="rounded border border-slate-800 p-4 text-sm text-slate-500">
+              <p className="rounded-lg border border-slate-800 p-4 text-sm text-slate-500">
                 {isLive ? "No recovery plan proposed yet." : "No plan for this case yet."}
               </p>
-            )}
-            {showApprovalPanel && displayApprovalRequest && displayApprovalDecision && (
-              <ApprovalBoundaryPanel
-                approvalRequest={displayApprovalRequest}
-                decision={displayApprovalDecision}
-                onApprove={() => (isLive ? resolveLiveApproval("APPROVED") : setStaticApprovalDecision("APPROVED"))}
-                onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
-                onOpenModal={() => setModalOpen(true)}
-                disabled={isTriggering && !isLive}
-                isLive={isLive}
-              />
             )}
           </div>
         </div>
 
+        {/* Human Approval Boundary gets its own full-width row, not squeezed into
+            a narrow column — it's the one hard authority gate in the whole system
+            (§21) and reads left-to-right as the natural next step after Risk →
+            Agent reasoning → Recovery Plan above; full width also gives its
+            Agent-Recommends / Human-Must-Authorize split room to sit side by side
+            instead of stacked. */}
+        {showApprovalPanel && displayApprovalRequest && displayApprovalDecision && (
+          <div className="mt-5">
+            <ApprovalBoundaryPanel
+              approvalRequest={displayApprovalRequest}
+              decision={displayApprovalDecision}
+              onApprove={() => (isLive ? resolveLiveApproval("APPROVED") : setStaticApprovalDecision("APPROVED"))}
+              onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
+              onOpenModal={() => setModalOpen(true)}
+              disabled={isTriggering && !isLive}
+              isLive={isLive}
+            />
+          </div>
+        )}
+
         {/* LEVEL 2 — supporting evidence: always the static reference fixture (see
             file header — the live API doesn't expose a per-supplier eligibility
             breakdown, and this SKU/inventory context doesn't change during the run) */}
-        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mt-10 mb-3 text-[11px] font-semibold tracking-widest text-slate-600 uppercase">Supporting evidence</div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <InventoryCoveragePanel
             inventory={inventoryRecord}
             coverageDays={coverage.coverageDays}
@@ -323,7 +334,8 @@ export default function Page(): React.ReactElement {
         </div>
 
         {/* LEVEL 3 — audit/debug: quietest, never competes with the story above */}
-        <div className="mt-8 border-t border-slate-900 pt-6">
+        <div className="mt-10 border-t border-slate-900 pt-6">
+          <div className="mb-3 text-[11px] font-semibold tracking-widest text-slate-600 uppercase">Audit &amp; controls</div>
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_260px]">
             <AuditTimeline auditEvents={displayAuditEvents} />
             <JudgeControlStrip onTriggerShipmentDelay={triggerShipmentDelay} disabled={isLive || isTriggering} />

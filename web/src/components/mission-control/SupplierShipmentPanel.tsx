@@ -20,7 +20,7 @@ export function SupplierShipmentPanel({
         {supplierEligibility.map(({ supplier, result }) => {
           const isDisrupted = supplier.id === disruptedSupplierId;
           return (
-            <li key={supplier.id} className="rounded border border-slate-800 p-2.5 text-xs">
+            <li key={supplier.id} className="rounded-lg border border-slate-800 p-2.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-slate-200">{supplier.name}</span>
                 {isDisrupted ? (

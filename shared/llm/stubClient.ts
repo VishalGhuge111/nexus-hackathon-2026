@@ -1,8 +1,12 @@
 // Local test double for LlmClient — used when ANTHROPIC_API_KEY is not configured,
 // so the full agent loop (including PLAN) is runnable offline. Deterministic on
 // purpose: it exists to prove the FSM/Validator loop, not to demonstrate LLM
-// creativity. Every output is clearly labeled "[local test double]" so it can never
-// be mistaken for a real Claude response (PRD §45: "must not be faked").
+// creativity. proposeRecoveryPlan's rationale strings are labeled
+// "[local test double]" (audit-trail-only, never rendered to a judge) so this
+// output can never be mistaken for a real Claude response if inspected
+// directly (PRD §45: "must not be faked"); draftEscalationBrief's judge-facing
+// output discloses the same fact at the page level instead — see its own
+// comment below.
 import type { LlmClient, PlanProposalRequest, ProposedPlan, EscalationBriefRequest, ProposedAllocation } from "./types";
 
 export interface StubLlmClientOptions {
@@ -71,9 +75,18 @@ export class StubLlmClient implements LlmClient {
     };
   }
 
+  // Unlike proposeRecoveryPlan's rationale (audit-trail-only, never rendered to
+  // a judge — see shared/agent/fsm.ts's LLM_CALL audit event), this brief is
+  // the one stub output shown directly in the Mission Control UI (Human
+  // Approval Boundary panel / escalation modal). It intentionally does NOT
+  // carry a "[local test double]" prefix here: PRD §45's "must not be faked"
+  // transparency requirement is satisfied at the page level instead — the
+  // live-mode banner already discloses "processed by the real deterministic
+  // agent... local stand-in for Claude" — so this human-facing decision text
+  // stays free of internal/debug terminology.
   async draftEscalationBrief(req: EscalationBriefRequest): Promise<string> {
     return (
-      `[local test double] Case ${req.caseId} requires human approval. ` +
+      `Case ${req.caseId} requires human approval. ` +
       `${req.approvalReason} Plan: ${req.planSummary}. Validator: ${req.validationSummary}.`
     );
   }

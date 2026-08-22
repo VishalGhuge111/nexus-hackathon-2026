@@ -11,11 +11,21 @@ const TONE_CLASSES: Record<PillTone, string> = {
   pending: "bg-violet-950 text-violet-300 border-violet-800"
 };
 
-export function StatusPill({ label, tone }: { label: string; tone: PillTone }): React.ReactElement {
+const DOT_CLASSES: Record<PillTone, string> = {
+  success: "bg-emerald-400",
+  warning: "bg-amber-400",
+  danger: "bg-red-400",
+  info: "bg-sky-400",
+  neutral: "bg-slate-400",
+  pending: "bg-violet-400"
+};
+
+export function StatusPill({ label, tone, dot = false }: { label: string; tone: PillTone; dot?: boolean }): React.ReactElement {
   return (
     <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide ${TONE_CLASSES[tone]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide ${TONE_CLASSES[tone]}`}
     >
+      {dot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_CLASSES[tone]}`} />}
       {label}
     </span>
   );

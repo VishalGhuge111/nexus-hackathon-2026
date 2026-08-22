@@ -12,6 +12,17 @@ function isToolStatus(value: unknown): value is "SUCCESS" | "FAILURE" | "NO_DATA
   return value === "SUCCESS" || value === "FAILURE" || value === "NO_DATA";
 }
 
+// Left-edge accent per AuditEvent.type — lets a judge scan the shape of a run
+// (state changes vs. tool calls vs. the one human action) without reading
+// every row's text first. Purely a display grouping; no new data.
+const TYPE_ACCENT: Record<AuditEvent["type"], string> = {
+  STATE_TRANSITION: "border-l-sky-600",
+  TOOL_CALL: "border-l-slate-700",
+  LLM_CALL: "border-l-violet-600",
+  VALIDATION: "border-l-amber-600",
+  HUMAN_ACTION: "border-l-emerald-600"
+};
+
 export function AuditTimeline({ auditEvents }: { auditEvents: AuditEvent[] }): React.ReactElement {
   const chronological = [...auditEvents].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -19,9 +30,12 @@ export function AuditTimeline({ auditEvents }: { auditEvents: AuditEvent[] }): R
 
   return (
     <Panel title="Audit Timeline" subtitle="Gapless chronological event chain — every step, no gaps (§25)">
-      <ol className="max-h-80 space-y-1 overflow-y-auto pr-1">
+      <ol className="scroll-thin max-h-80 space-y-1 overflow-y-auto pr-1">
         {chronological.map((event) => (
-          <li key={event.id} className="flex items-start gap-2.5 border-b border-slate-900/70 py-2 text-xs">
+          <li
+            key={event.id}
+            className={`flex items-start gap-2.5 border-b border-l-2 border-b-slate-900/70 py-2 pl-2.5 text-xs ${TYPE_ACCENT[event.type]}`}
+          >
             <span className="w-20 shrink-0 font-mono text-slate-600">{formatTimeUTC(event.timestamp)} UTC</span>
             <span className="w-8 shrink-0 font-mono text-slate-600">c{event.cycle}</span>
             <span className="w-14 shrink-0 text-slate-600">{event.actor}</span>

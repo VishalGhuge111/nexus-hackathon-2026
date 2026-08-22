@@ -58,8 +58,8 @@ function CaseCard({
   return (
     <li
       onClick={() => onSelect(caseRecord.id)}
-      className={`cursor-pointer rounded border p-2.5 text-sm transition-colors ${
-        selected ? "border-sky-600 bg-slate-900" : "border-slate-800 hover:border-slate-700"
+      className={`cursor-pointer rounded-lg border p-2.5 text-sm transition-colors ${
+        selected ? "border-sky-600 bg-slate-900 ring-1 ring-sky-600/40" : "border-slate-800 hover:border-slate-700"
       }`}
     >
       <div className="flex items-center justify-between gap-2">

@@ -28,7 +28,7 @@ export function InventoryCoveragePanel({
       </div>
 
       {inventory.stockDiscrepancyFlag && (
-        <div className="mt-3 flex items-center gap-2 rounded border border-amber-900 bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-900 bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
           <StatusPill label="discrepancy" tone="warning" />
           <span>
             currentStock ({inventory.currentStock}) ≠ usableStock ({inventory.usableStock}) — all math below uses
