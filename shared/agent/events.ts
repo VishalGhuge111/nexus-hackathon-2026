@@ -11,6 +11,13 @@ export interface ShipmentDelayPayload {
   delayHours: number;
 }
 
+export interface SupplierCapacityDropPayload {
+  supplierId: string;
+  productionOrderId: string;
+  capacityDropPercent: number;
+  newMaxCapacityPerCycle: number;
+}
+
 async function attachOrCreateCase(store: Store, productionOrderId: string, now: Date): Promise<string> {
   const existing = await store.findCaseByProductionOrder(productionOrderId);
   if (existing) return existing.id;
@@ -73,6 +80,39 @@ export async function applyShipmentDelayEvent(
     type: "STATE_TRANSITION",
     summary: `Judge event SHIPMENT_DELAY: PO ${po.id} delayed ${payload.delayHours}h -> new ETA ${newDeliveryDate}`,
     detail: { poId: po.id, delayHours: payload.delayHours, newDeliveryDate }
+  });
+
+  return { caseId };
+}
+
+/**
+ * PRD §31 event #3 — mutates Supplier.maxCapacityPerCycle and triggers a
+ * fresh computation via the next agent tick.
+ */
+export async function applySupplierCapacityDropEvent(
+  store: Store,
+  payload: SupplierCapacityDropPayload,
+  now: Date = new Date()
+): Promise<{ caseId: string }> {
+  const supplier = await store.getSupplier(payload.supplierId);
+  if (!supplier) throw new Error(`Supplier ${payload.supplierId} not found`);
+
+  const updatedSupplier = await store.updateSupplier(supplier.id, { maxCapacityPerCycle: payload.newMaxCapacityPerCycle });
+
+  const productionOrder = await store.getProductionOrder(payload.productionOrderId);
+  if (!productionOrder) throw new Error(`No ProductionOrder found for id ${payload.productionOrderId}`);
+
+  const caseId = await attachOrCreateCase(store, productionOrder.id, now);
+
+  await store.appendAuditEvent({
+    id: newId("audit"),
+    caseId,
+    cycle: 0,
+    timestamp: now.toISOString(),
+    actor: "SYSTEM",
+    type: "STATE_TRANSITION",
+    summary: `Judge event SUPPLIER_CAPACITY_DROP: Supplier ${supplier.id} capacity dropped by ${payload.capacityDropPercent}% -> new max ${payload.newMaxCapacityPerCycle}`,
+    detail: { supplierId: supplier.id, capacityDropPercent: payload.capacityDropPercent, newMaxCapacityPerCycle: payload.newMaxCapacityPerCycle }
   });
 
   return { caseId };

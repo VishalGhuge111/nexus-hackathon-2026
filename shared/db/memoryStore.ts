@@ -9,10 +9,12 @@ import type { Supplier } from "../types/supplier";
 import type {
   PurchaseOrder,
   RecoveryPlanVersion,
-  EmergencyBudget
+  EmergencyBudget,
+  RFQ
 } from "../types/procurement";
 import type { ValidationResult, ApprovalRequest } from "../types/validation";
 import type { AuditEvent } from "../types/audit";
+import type { SupplierMessage } from "../types/supplier";
 import type { Store } from "./types";
 
 export interface MemorySeed {
@@ -23,6 +25,8 @@ export interface MemorySeed {
   suppliers?: Supplier[];
   purchaseOrders?: PurchaseOrder[];
   emergencyBudget?: EmergencyBudget;
+  supplierMessages?: SupplierMessage[];
+  rfqs?: RFQ[];
 }
 
 export class MemoryStore implements Store {
@@ -36,6 +40,8 @@ export class MemoryStore implements Store {
   private validationResults: (ValidationResult & { id: string })[] = [];
   private approvalRequests = new Map<string, ApprovalRequest>();
   private auditEvents: AuditEvent[] = [];
+  private supplierMessages: SupplierMessage[] = [];
+  private rfqs = new Map<string, RFQ>();
   private emergencyBudget: EmergencyBudget = {
     totalAmount: 0,
     reservedAmount: 0,
@@ -52,6 +58,8 @@ export class MemoryStore implements Store {
     seed?.suppliers?.forEach((s) => this.suppliers.set(s.id, structuredClone(s)));
     seed?.purchaseOrders?.forEach((p) => this.purchaseOrders.set(p.id, structuredClone(p)));
     if (seed?.emergencyBudget) this.emergencyBudget = structuredClone(seed.emergencyBudget);
+    seed?.supplierMessages?.forEach((m) => this.supplierMessages.push(structuredClone(m)));
+    seed?.rfqs?.forEach((r) => this.rfqs.set(r.id, structuredClone(r)));
   }
 
   async getCase(id: string): Promise<Case | null> {
@@ -146,6 +154,38 @@ export class MemoryStore implements Store {
 
   async listSuppliers(): Promise<Supplier[]> {
     return [...this.suppliers.values()].map((s) => structuredClone(s));
+  }
+
+  async updateSupplier(id: string, patch: Partial<Supplier>): Promise<Supplier> {
+    const existing = this.suppliers.get(id);
+    if (!existing) throw new Error(`Supplier ${id} not found`);
+    const updated = { ...existing, ...patch };
+    this.suppliers.set(id, updated);
+    return structuredClone(updated);
+  }
+
+  async createSupplierMessage(msg: SupplierMessage): Promise<void> {
+    this.supplierMessages.push(structuredClone(msg));
+  }
+
+  async listSupplierMessagesByCase(caseId: string): Promise<SupplierMessage[]> {
+    return this.supplierMessages.filter((m) => m.caseId === caseId).map((m) => structuredClone(m));
+  }
+
+  async createRfq(rfq: RFQ): Promise<void> {
+    this.rfqs.set(rfq.id, structuredClone(rfq));
+  }
+
+  async listRfqsByCase(caseId: string): Promise<RFQ[]> {
+    return [...this.rfqs.values()].filter((r) => r.caseId === caseId).map((r) => structuredClone(r));
+  }
+
+  async updateRfq(id: string, patch: Partial<RFQ>): Promise<RFQ> {
+    const existing = this.rfqs.get(id);
+    if (!existing) throw new Error(`RFQ ${id} not found`);
+    const updated = { ...existing, ...patch };
+    this.rfqs.set(id, updated);
+    return structuredClone(updated);
   }
 
   async getEmergencyBudget(): Promise<EmergencyBudget> {

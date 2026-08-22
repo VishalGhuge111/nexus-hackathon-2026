@@ -11,10 +11,12 @@ import type { Supplier } from "../types/supplier";
 import type {
   PurchaseOrder,
   RecoveryPlanVersion,
-  EmergencyBudget
+  EmergencyBudget,
+  RFQ
 } from "../types/procurement";
 import type { ValidationResult, ApprovalRequest } from "../types/validation";
 import type { AuditEvent } from "../types/audit";
+import type { SupplierMessage } from "../types/supplier";
 import type { Store } from "./types";
 
 const EMERGENCY_BUDGET_ID = "EMERGENCY_BUDGET_SINGLETON";
@@ -145,6 +147,52 @@ function toSupplier(row: {
     reliabilityScore: row.reliabilityScore,
     qualityScore: row.qualityScore,
     pricePerUnit: row.pricePerUnit as Record<string, number>
+  };
+}
+
+function toSupplierMessage(row: {
+  id: string;
+  supplierId: string;
+  caseId: string;
+  direction: string;
+  subject: string;
+  body: string;
+  extractedFields: unknown;
+  contradictionFlag: boolean | null;
+  sentAt: Date;
+}): SupplierMessage {
+  return {
+    id: row.id,
+    supplierId: row.supplierId,
+    caseId: row.caseId,
+    direction: row.direction as SupplierMessage["direction"],
+    subject: row.subject,
+    body: row.body,
+    extractedFields: row.extractedFields as Record<string, unknown> | undefined,
+    contradictionFlag: row.contradictionFlag ?? undefined,
+    sentAt: row.sentAt.toISOString()
+  };
+}
+
+function toRfq(row: {
+  id: string;
+  caseId: string;
+  sku: string;
+  qty: number;
+  neededBy: Date;
+  supplierIds: unknown;
+  status: string;
+  responses: unknown;
+}): RFQ {
+  return {
+    id: row.id,
+    caseId: row.caseId,
+    sku: row.sku,
+    qty: row.qty,
+    neededBy: row.neededBy.toISOString(),
+    supplierIds: row.supplierIds as string[],
+    status: row.status as RFQ["status"],
+    responses: row.responses as RFQ["responses"]
   };
 }
 
@@ -389,6 +437,75 @@ export class PrismaStore implements Store {
   async listSuppliers(): Promise<Supplier[]> {
     const rows = await this.prisma.supplier.findMany();
     return rows.map(toSupplier);
+  }
+
+  async updateSupplier(id: string, patch: Partial<Supplier>): Promise<Supplier> {
+    const row = await this.prisma.supplier.update({
+      where: { id },
+      data: {
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.certifications !== undefined ? { certifications: patch.certifications } : {}),
+        ...(patch.moq !== undefined ? { moq: patch.moq } : {}),
+        ...(patch.maxCapacityPerCycle !== undefined ? { maxCapacityPerCycle: patch.maxCapacityPerCycle } : {}),
+        ...(patch.defaultLeadTimeDays !== undefined ? { defaultLeadTimeDays: patch.defaultLeadTimeDays } : {}),
+        ...(patch.reliabilityScore !== undefined ? { reliabilityScore: patch.reliabilityScore } : {}),
+        ...(patch.qualityScore !== undefined ? { qualityScore: patch.qualityScore } : {}),
+        ...(patch.pricePerUnit !== undefined ? { pricePerUnit: patch.pricePerUnit } : {})
+      }
+    });
+    return toSupplier(row);
+  }
+
+  async createSupplierMessage(msg: SupplierMessage): Promise<void> {
+    await this.prisma.supplierMessage.create({
+      data: {
+        id: msg.id,
+        supplierId: msg.supplierId,
+        caseId: msg.caseId,
+        direction: msg.direction === 'OUTBOUND' ? 'OUTBOUND' : 'INBOUND',
+        subject: msg.subject,
+        body: msg.body,
+        extractedFields: msg.extractedFields ? (msg.extractedFields as object) : undefined,
+        contradictionFlag: msg.contradictionFlag ?? null,
+        sentAt: new Date(msg.sentAt)
+      }
+    });
+  }
+
+  async listSupplierMessagesByCase(caseId: string): Promise<SupplierMessage[]> {
+    const rows = await this.prisma.supplierMessage.findMany({ where: { caseId } });
+    return rows.map(toSupplierMessage);
+  }
+
+  async createRfq(rfq: RFQ): Promise<void> {
+    await this.prisma.rFQ.create({
+      data: {
+        id: rfq.id,
+        caseId: rfq.caseId,
+        sku: rfq.sku,
+        qty: rfq.qty,
+        neededBy: new Date(rfq.neededBy),
+        supplierIds: rfq.supplierIds,
+        status: rfq.status === 'OPEN' ? 'OPEN' : 'CLOSED',
+        responses: rfq.responses as object[]
+      }
+    });
+  }
+
+  async listRfqsByCase(caseId: string): Promise<RFQ[]> {
+    const rows = await this.prisma.rFQ.findMany({ where: { caseId } });
+    return rows.map(toRfq);
+  }
+
+  async updateRfq(id: string, patch: Partial<RFQ>): Promise<RFQ> {
+    const row = await this.prisma.rFQ.update({
+      where: { id },
+      data: {
+        ...(patch.status !== undefined ? { status: patch.status === 'OPEN' ? 'OPEN' : 'CLOSED' } : {}),
+        ...(patch.responses !== undefined ? { responses: patch.responses as object[] } : {})
+      }
+    });
+    return toRfq(row);
   }
 
   async getEmergencyBudget(): Promise<EmergencyBudget> {
