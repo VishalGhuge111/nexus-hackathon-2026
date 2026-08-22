@@ -33,7 +33,7 @@ export function ActiveCasesList({ cases }: { cases: Case[] }) {
           <tbody className="space-y-2">
             <tr className="h-2"></tr>
             {cases.map((c, i) => (
-              <tr key={c.id} className={group hover:bg-primary/5 transition-colors \}>
+              <tr key={c.id} className={`group hover:bg-primary/5 transition-colors ${i % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'}`}>
                 <td className="px-6 py-4 font-mono font-medium text-foreground">{c.id}</td>
                 <td className="px-6 py-4 font-mono text-muted-foreground group-hover:text-foreground transition-colors">{c.productionOrderId}</td>
                 <td className="px-6 py-4">
