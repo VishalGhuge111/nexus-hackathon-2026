@@ -22,16 +22,16 @@ const BRANCH_NODES: { id: CaseStatus; edge: string }[] = [
 ];
 
 function nodeClasses(isCurrent: boolean, isCompleted: boolean, isTerminalGood: boolean, isTerminalBad: boolean): string {
-  if (isCurrent) return "border-sky-500 bg-sky-950 text-sky-200 ring-2 ring-sky-500/40";
-  if (isCompleted && isTerminalGood) return "border-emerald-700 bg-emerald-950/50 text-emerald-300";
-  if (isCompleted) return "border-emerald-900/60 bg-emerald-950/20 text-emerald-500/80";
-  if (isTerminalBad) return "border-red-900 bg-red-950/30 text-red-400";
-  return "border-slate-800 bg-slate-900/60 text-slate-500";
+  if (isCurrent) return "border-sky-400 bg-sky-50 text-sky-700 ring-2 ring-sky-200";
+  if (isCompleted && isTerminalGood) return "border-emerald-300 bg-emerald-50 text-emerald-700";
+  if (isCompleted) return "border-emerald-200 bg-emerald-50/70 text-emerald-600";
+  if (isTerminalBad) return "border-red-300 bg-red-50 text-red-600";
+  return "border-zinc-200 bg-zinc-50 text-zinc-400";
 }
 
 export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus }): React.ReactElement {
   // A step already passed through reads as "done" (muted emerald) rather than
-  // identical to a step never reached yet (dim slate) — the whole point of a
+  // identical to a step never reached yet (dim zinc) — the whole point of a
   // pipeline view is to show progress, not just a static diagram with one dot
   // lit up. MONITORING/EARLY_RISK_CHECK have no live equivalent in this
   // reactive event-driven slice (case creation starts the case straight at
@@ -47,7 +47,7 @@ export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus
           return (
             <div key={status} className="flex items-center gap-2">
               <div
-                className={`rounded border px-2.5 py-1.5 font-mono text-xs font-medium ${nodeClasses(
+                className={`rounded-md border px-2.5 py-1.5 font-mono text-xs font-medium ${nodeClasses(
                   isCurrent,
                   isCompleted,
                   status === "GOAL_ACHIEVED",
@@ -56,22 +56,22 @@ export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus
               >
                 {isCompleted && <span className="mr-1 text-emerald-500">✓</span>}
                 {status.replace(/_/g, " ")}
-                {isCurrent && <span className="ml-1.5 text-sky-400">● live</span>}
+                {isCurrent && <span className="ml-1.5 text-sky-500">● live</span>}
               </div>
               {i < MAIN_PATH.length - 1 && (
-                <span className={isCompleted ? "text-emerald-800" : "text-slate-700"}>&rarr;</span>
+                <span className={isCompleted ? "text-emerald-300" : "text-zinc-300"}>&rarr;</span>
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="mt-3 space-y-1.5 border-t border-slate-800 pt-3">
-        <div className="text-[11px] uppercase tracking-wide text-slate-500">Branches</div>
+      <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
+        <div className="text-[11px] uppercase tracking-wide text-zinc-400">Branches</div>
         {BRANCH_NODES.map((branch) => (
           <div key={branch.id} className="flex items-start gap-2 text-xs">
             <div
-              className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[11px] font-medium ${nodeClasses(
+              className={`shrink-0 rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium ${nodeClasses(
                 branch.id === currentStatus,
                 false,
                 false,
@@ -79,9 +79,9 @@ export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus
               )}`}
             >
               {branch.id.replace(/_/g, " ")}
-              {branch.id === currentStatus && <span className="ml-1.5 text-sky-400">● live</span>}
+              {branch.id === currentStatus && <span className="ml-1.5 text-sky-500">● live</span>}
             </div>
-            <p className="text-slate-500">{branch.edge}</p>
+            <p className="text-zinc-400">{branch.edge}</p>
           </div>
         ))}
       </div>

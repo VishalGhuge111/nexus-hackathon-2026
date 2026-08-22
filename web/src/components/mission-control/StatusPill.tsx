@@ -3,21 +3,21 @@ import type { CaseStatus } from "@nexus/shared/types/case";
 export type PillTone = "success" | "warning" | "danger" | "info" | "neutral" | "pending";
 
 const TONE_CLASSES: Record<PillTone, string> = {
-  success: "bg-emerald-950 text-emerald-300 border-emerald-800",
-  warning: "bg-amber-950 text-amber-300 border-amber-800",
-  danger: "bg-red-950 text-red-300 border-red-800",
-  info: "bg-sky-950 text-sky-300 border-sky-800",
-  neutral: "bg-slate-800 text-slate-300 border-slate-700",
-  pending: "bg-violet-950 text-violet-300 border-violet-800"
+  success: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  warning: "bg-amber-50 text-amber-700 border-amber-200",
+  danger: "bg-red-50 text-red-700 border-red-200",
+  info: "bg-sky-50 text-sky-700 border-sky-200",
+  neutral: "bg-zinc-100 text-zinc-600 border-zinc-200",
+  pending: "bg-violet-50 text-violet-700 border-violet-200"
 };
 
 const DOT_CLASSES: Record<PillTone, string> = {
-  success: "bg-emerald-400",
-  warning: "bg-amber-400",
-  danger: "bg-red-400",
-  info: "bg-sky-400",
-  neutral: "bg-slate-400",
-  pending: "bg-violet-400"
+  success: "bg-emerald-500",
+  warning: "bg-amber-500",
+  danger: "bg-red-500",
+  info: "bg-sky-500",
+  neutral: "bg-zinc-400",
+  pending: "bg-violet-500"
 };
 
 export function StatusPill({ label, tone, dot = false }: { label: string; tone: PillTone; dot?: boolean }): React.ReactElement {

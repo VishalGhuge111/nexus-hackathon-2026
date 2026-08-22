@@ -30,37 +30,37 @@ export function PlanVersionLineage({
           return (
             <div key={version.id}>
               {i > 0 && (
-                <div className="flex items-center gap-2 py-1.5 pl-2 text-[11px] text-slate-600">
-                  <span className="font-mono text-sm leading-none text-slate-700">&darr;</span>
+                <div className="flex items-center gap-2 py-1.5 pl-2 text-[11px] text-zinc-400">
+                  <span className="font-mono text-sm leading-none text-zinc-300">&darr;</span>
                   <span>replanned</span>
                 </div>
               )}
               <div
                 className={`rounded-lg border p-3 ${
-                  isActive ? "border-sky-700/70 bg-sky-950/20" : isSuperseded ? "border-slate-800/70 bg-slate-900/20 opacity-70" : "border-slate-800"
+                  isActive ? "border-sky-200 bg-sky-50" : isSuperseded ? "border-zinc-200 bg-zinc-50 opacity-70" : "border-zinc-200"
                 }`}
               >
                 <div className="mb-2 flex items-center justify-between">
-                  <span className={`font-mono text-sm ${isSuperseded ? "text-slate-500 line-through decoration-slate-700" : "text-slate-200"}`}>
+                  <span className={`font-mono text-sm ${isSuperseded ? "text-zinc-400 line-through decoration-zinc-300" : "text-zinc-800"}`}>
                     V{version.version}
                     {version.parent_version !== null && (
-                      <span className="ml-2 font-sans text-xs text-slate-500 no-underline">parent V{version.parent_version}</span>
+                      <span className="ml-2 font-sans text-xs text-zinc-400 no-underline">parent V{version.parent_version}</span>
                     )}
                   </span>
                   <StatusPill label={version.status} dot={isActive} tone={isActive ? "info" : "neutral"} />
                 </div>
 
-                <p className="mb-2 text-xs text-slate-400">
-                  <span className="text-slate-500">reason_for_change:</span> {version.reason_for_change}
+                <p className="mb-2 text-xs text-zinc-500">
+                  <span className="text-zinc-400">reason_for_change:</span> {version.reason_for_change}
                 </p>
-                <p className="mb-2 text-xs text-slate-500">
-                  <span className="text-slate-500">triggering_event:</span> {version.triggering_event}
+                <p className="mb-2 text-xs text-zinc-400">
+                  <span className="text-zinc-400">triggering_event:</span> {version.triggering_event}
                 </p>
 
                 {version.invalidated_assumptions.length > 0 && (
                   <div className="mb-2">
-                    <div className="text-[11px] font-semibold tracking-wide text-red-400 uppercase">Invalidated assumptions</div>
-                    <ul className="mt-1 list-inside list-disc text-xs text-red-300/90">
+                    <div className="text-[11px] font-semibold tracking-wide text-red-600 uppercase">Invalidated assumptions</div>
+                    <ul className="mt-1 list-inside list-disc text-xs text-red-600/90">
                       {version.invalidated_assumptions.map((a) => (
                         <li key={a}>{a}</li>
                       ))}
@@ -70,8 +70,8 @@ export function PlanVersionLineage({
 
                 {version.carried_forward_actions.length > 0 && (
                   <div>
-                    <div className="text-[11px] font-semibold tracking-wide text-emerald-400 uppercase">Carried-forward actions</div>
-                    <ul className="mt-1 list-inside list-disc text-xs text-emerald-300/90">
+                    <div className="text-[11px] font-semibold tracking-wide text-emerald-600 uppercase">Carried-forward actions</div>
+                    <ul className="mt-1 list-inside list-disc text-xs text-emerald-600/90">
                       {version.carried_forward_actions.map((a) => (
                         <li key={a}>{a}</li>
                       ))}
@@ -80,7 +80,7 @@ export function PlanVersionLineage({
                 )}
 
                 {version.invalidated_assumptions.length === 0 && version.carried_forward_actions.length === 0 && (
-                  <p className="text-xs text-slate-600">Initial proposal — no prior version to carry forward or invalidate.</p>
+                  <p className="text-xs text-zinc-400">Initial proposal — no prior version to carry forward or invalidate.</p>
                 )}
               </div>
             </div>

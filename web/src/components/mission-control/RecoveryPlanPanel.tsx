@@ -24,7 +24,7 @@ export function RecoveryPlanPanel({
       title="Recovery Plan"
       subtitle={`Active plan version v${activePlanVersion.version}`}
       tone="primary"
-      className="border-sky-900/50"
+      className="border-sky-100"
       headerRight={
         <StatusPill
           label={`V${activePlanVersion.version} · ${validationResult.overallPassed ? "VALIDATED" : "REJECTED"}`}
@@ -35,27 +35,27 @@ export function RecoveryPlanPanel({
       <ul className="mb-2 space-y-1 text-sm">
         {plan.allocations.map((a, i) => (
           <li key={i} className="flex items-center justify-between">
-            <span>
-              {a.qty} units from <span className="font-mono">{a.supplierId}</span>
+            <span className="text-zinc-700">
+              {a.qty} units from <span className="font-mono text-zinc-900">{a.supplierId}</span>
             </span>
-            <span className="font-mono text-slate-400">@ ₹{a.unitPrice}</span>
+            <span className="font-mono text-zinc-500">@ ₹{a.unitPrice}</span>
           </li>
         ))}
       </ul>
       <div className="mb-4 flex items-center justify-between text-sm">
-        <span className="text-slate-400">Total cost</span>
-        <span className="font-mono font-semibold text-slate-100">{formatINR(plan.totalCost)}</span>
+        <span className="text-zinc-400">Total cost</span>
+        <span className="font-mono font-semibold text-zinc-900">{formatINR(plan.totalCost)}</span>
       </div>
-      <div className="mb-4 flex items-center justify-between text-xs text-slate-500">
+      <div className="mb-4 flex items-center justify-between text-xs text-zinc-400">
         <span>Expected delivery</span>
         <span className="font-mono">{formatDateUTC(plan.expectedDeliveryDate)} (UTC)</span>
       </div>
 
-      <div className="mb-4 border-t border-slate-800 pt-3">
+      <div className="mb-4 border-t border-zinc-100 pt-3">
         <ValidatorChecklist result={validationResult} />
       </div>
 
-      <div className="border-t border-slate-800 pt-3">
+      <div className="border-t border-zinc-100 pt-3">
         <DoNothingVsNexus doNothing={comparison.doNothing} nexusPlan={comparison.nexusPlan} />
       </div>
     </Panel>

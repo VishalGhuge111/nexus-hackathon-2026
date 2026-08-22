@@ -28,7 +28,7 @@ export function InventoryCoveragePanel({
       </div>
 
       {inventory.stockDiscrepancyFlag && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-900 bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
           <StatusPill label="discrepancy" tone="warning" />
           <span>
             currentStock ({inventory.currentStock}) ≠ usableStock ({inventory.usableStock}) — all math below uses
@@ -43,8 +43,8 @@ export function InventoryCoveragePanel({
 function Field({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }): React.ReactElement {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`font-mono ${highlight ? "text-slate-100" : "text-slate-300"}`}>{value}</div>
+      <div className="text-[11px] uppercase tracking-wide text-zinc-400">{label}</div>
+      <div className={`font-mono ${highlight ? "font-semibold text-zinc-900" : "text-zinc-600"}`}>{value}</div>
     </div>
   );
 }

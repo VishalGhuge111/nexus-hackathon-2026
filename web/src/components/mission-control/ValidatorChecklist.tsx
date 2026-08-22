@@ -8,24 +8,24 @@ export function ValidatorChecklist({ result }: { result: ValidationResult }): Re
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[11px] tracking-wide text-slate-500 uppercase">Validator (8 checks, §16)</div>
+        <div className="text-[11px] tracking-wide text-zinc-400 uppercase">Validator (8 checks, §16)</div>
         <StatusPill label={result.overallPassed ? "PASSED" : "FAILED"} tone={result.overallPassed ? "success" : "danger"} />
       </div>
       <ul className="space-y-1">
         {result.checks.map((check) => (
-          <li key={check.name} className="grid grid-cols-[132px_1fr_44px] items-start gap-2 border-b border-slate-900 py-1.5 text-xs">
-            <span className="font-mono font-medium text-slate-300">{check.name}</span>
-            <span className="text-slate-500">
+          <li key={check.name} className="grid grid-cols-[132px_1fr_44px] items-start gap-2 border-b border-zinc-100 py-1.5 text-xs">
+            <span className="font-mono font-medium text-zinc-700">{check.name}</span>
+            <span className="text-zinc-400">
               expected {String(check.expected)} · actual {String(check.actual)}
             </span>
-            <span className={`text-right font-mono font-semibold ${check.passed ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`text-right font-mono font-semibold ${check.passed ? "text-emerald-600" : "text-red-600"}`}>
               {check.passed ? "PASS" : "FAIL"}
             </span>
           </li>
         ))}
       </ul>
       {!result.overallPassed && (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-zinc-400">
           approval-threshold row is informational only — it never gates pass/fail (§16.8), only EXECUTE vs ESCALATE.
         </p>
       )}

@@ -1,22 +1,67 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Search, User, Package, Loader2 } from 'lucide-react';
+import { Search, User, Package } from 'lucide-react';
 import { fetchSuppliers } from '../../lib/api-client';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { ErrorState } from '../../components/ui/ErrorState';
 import type { Supplier } from '@nexus/shared/types/supplier';
+
+function SuppliersTableSkeleton() {
+  return (
+    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+      <table className="w-full text-sm text-left">
+        <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
+          <tr>
+            <th className="px-6 py-4">Supplier</th>
+            <th className="px-6 py-4">Certifications</th>
+            <th className="px-6 py-4">MOQ</th>
+            <th className="px-6 py-4">Max Capacity / Cycle</th>
+            <th className="px-6 py-4">Lead Time</th>
+            <th className="px-6 py-4">Reliability</th>
+            <th className="px-6 py-4">Quality</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <tr key={i}>
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-8 h-8 rounded" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-10" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-10" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-12" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-5 w-14 rounded-full" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-5 w-14 rounded-full" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     fetchSuppliers()
       .then((data) => { if (!cancelled) setSuppliers(data); })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   const filtered = (suppliers ?? []).filter((s) => {
     if (!searchTerm) return true;
@@ -46,22 +91,16 @@ export default function SuppliersPage() {
             />
           </div>
 
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              Failed to load suppliers: {error}
-            </div>
-          )}
-
-          {!suppliers && !error ? (
-            <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-400">
-              <Loader2 size={16} className="animate-spin" /> Loading suppliers…
-            </div>
+          {error ? (
+            <ErrorState message={`Failed to load suppliers: ${error}`} onRetry={() => setReloadKey((k) => k + 1)} />
+          ) : !suppliers ? (
+            <SuppliersTableSkeleton />
           ) : filtered.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-zinc-200 rounded-xl p-12 text-center text-sm text-zinc-500">
               No suppliers found.
             </div>
           ) : (
-            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm animate-fade-in">
               <table className="w-full text-sm text-left">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
                   <tr>

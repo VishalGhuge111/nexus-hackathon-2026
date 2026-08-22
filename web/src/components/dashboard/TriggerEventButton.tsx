@@ -6,7 +6,7 @@
 // error text from the API on failure (e.g. "already an active case for this
 // production order").
 import { useState } from 'react';
-import { Zap, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { triggerShipmentDelay } from '../../lib/api-client';
 
 export function TriggerEventButton({ onTriggered }: { onTriggered?: (caseId: string) => void }) {
@@ -31,9 +31,9 @@ export function TriggerEventButton({ onTriggered }: { onTriggered?: (caseId: str
       <button
         onClick={handleClick}
         disabled={loading}
-        className="flex items-center gap-2 px-3 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors disabled:opacity-60"
+        className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+        {loading ? <Loader2 size={16} className="animate-spin" /> : <AlertTriangle size={16} />}
         {loading ? 'Triggering…' : 'Trigger Shipment Delay 24h'}
       </button>
       {error && <span className="text-xs text-red-600 max-w-xs text-right">{error}</span>}

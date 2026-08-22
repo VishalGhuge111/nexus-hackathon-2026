@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React from 'react';
 import { ShieldAlert, Package, PlayCircle, AlertTriangle } from 'lucide-react';
 import type { DashboardSummaryCase } from '../../lib/api-client';
@@ -10,10 +10,15 @@ export interface IncidentGridProps {
   onSelect?: (id: string) => void;
 }
 
+const PRIORITY_STYLE: Record<string, string> = {
+  CRITICAL: 'bg-red-100 text-red-700',
+  STANDARD: 'bg-zinc-100 text-zinc-600'
+};
+
 export function IncidentGrid({ cases, loading = false, selectedId, onSelect }: IncidentGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
         {[1, 2, 3].map(i => (
           <div key={i} className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm h-64 animate-pulse">
             <div className="h-6 bg-zinc-200 rounded w-1/3 mb-4"></div>
@@ -34,34 +39,37 @@ export function IncidentGrid({ cases, loading = false, selectedId, onSelect }: I
         </div>
         <h3 className="text-lg font-bold text-zinc-900">No active incidents</h3>
         <p className="text-sm text-zinc-500 mt-1 max-w-sm">
-          All supply chain nodes are operating within normal parameters. Press Ctrl+K to explore.
+          All supply chain nodes are operating within normal parameters.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
       {cases.map((c) => {
         const isSelected = selectedId === c.id;
+        const priority = (c.priority || 'STANDARD').toUpperCase();
         return (
           <div
             key={c.id}
             onClick={() => onSelect && onSelect(c.id)}
-            className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all flex flex-col relative overflow-hidden group cursor-pointer ${isSelected ? 'border-blue-500 ring-1 ring-blue-500' : 'border-zinc-200'}`}
+            className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all flex flex-col relative overflow-hidden group cursor-pointer min-w-0 ${isSelected ? 'border-blue-500 ring-1 ring-blue-500' : 'border-zinc-200'}`}
           >
             {isSelected && <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>}
 
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 mb-3">
-                  <AlertTriangle size={12} /> {(c.priority || 'STANDARD').toUpperCase()} PRIORITY
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold mb-3 ${PRIORITY_STYLE[priority] ?? PRIORITY_STYLE.STANDARD}`}>
+                  <AlertTriangle size={12} /> {priority} PRIORITY
                 </span>
-                <h3 className="font-bold text-zinc-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">
+                <h3 className="font-bold text-zinc-900 text-lg leading-tight break-words group-hover:text-blue-600 transition-colors">
                   {c.status.replace(/_/g, ' ')}
                 </h3>
               </div>
-              <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-2 py-1 rounded">{c.id}</span>
+              <span className="shrink-0 max-w-[45%] truncate text-xs font-mono text-zinc-500 bg-zinc-100 px-2 py-1 rounded" title={c.id}>
+                {c.id}
+              </span>
             </div>
 
             <div className="space-y-3 mb-6">
@@ -69,12 +77,12 @@ export function IncidentGrid({ cases, loading = false, selectedId, onSelect }: I
                 <Package size={16} className="text-zinc-400 shrink-0" />
                 <span className="truncate">Plan v{c.activePlanVersion ?? 0} &middot; {c.replanCount} replan(s)</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-3 text-zinc-600">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <div className="flex items-center gap-3 text-zinc-600 shrink-0">
                   <ShieldAlert size={16} className="text-zinc-400 shrink-0" />
                   <span>Units at risk</span>
                 </div>
-                <span className={`font-bold ${c.continuityImpact.deadlineBreached ? 'text-red-600' : 'text-zinc-900'}`}>
+                <span className={`font-bold text-right ${c.continuityImpact.deadlineBreached ? 'text-red-600' : 'text-zinc-900'}`}>
                   {c.continuityImpact.unitsAtRisk}
                   {c.continuityImpact.deadlineBreached ? ' · deadline breached' : ''}
                 </span>

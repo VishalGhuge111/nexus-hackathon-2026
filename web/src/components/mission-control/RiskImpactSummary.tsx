@@ -18,18 +18,18 @@ export function RiskImpactSummary({
     <Panel title="Risk / Production Impact" subtitle="Threshold evidence behind why this Case opened (§11)" tone="primary">
       <div className="mb-3 flex gap-6 text-sm">
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-500">Units at risk</div>
-          <div className="font-mono text-lg font-semibold text-slate-100">{unitsAtRisk}</div>
+          <div className="text-[11px] uppercase tracking-wide text-zinc-400">Units at risk</div>
+          <div className="font-mono text-lg font-semibold text-zinc-900">{unitsAtRisk}</div>
         </div>
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-500">Deadline breached</div>
+          <div className="text-[11px] uppercase tracking-wide text-zinc-400">Deadline breached</div>
           <StatusPill label={deadlineBreached ? "YES" : "NO"} tone={deadlineBreached ? "danger" : "success"} />
         </div>
       </div>
 
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-left text-slate-500">
+          <tr className="text-left text-zinc-400">
             <th className="pb-1 font-normal">Indicator</th>
             <th className="pb-1 font-normal">Value</th>
             <th className="pb-1 font-normal">Threshold</th>
@@ -38,11 +38,11 @@ export function RiskImpactSummary({
         </thead>
         <tbody>
           {riskSignals.map((signal) => (
-            <tr key={signal.id} className="border-t border-slate-900">
-              <td className="py-1 font-mono text-slate-300">{signal.indicator}</td>
-              <td className="py-1 font-mono text-red-400">{formatSignalValue(signal.value)}</td>
-              <td className="py-1 font-mono text-slate-500">{signal.threshold}</td>
-              <td className="py-1 text-slate-500">{signal.source}</td>
+            <tr key={signal.id} className="border-t border-zinc-100">
+              <td className="py-1.5 font-mono text-zinc-700">{signal.indicator}</td>
+              <td className="py-1.5 font-mono font-semibold text-red-600">{formatSignalValue(signal.value)}</td>
+              <td className="py-1.5 font-mono text-zinc-500">{signal.threshold}</td>
+              <td className="py-1.5 text-zinc-400">{signal.source}</td>
             </tr>
           ))}
         </tbody>

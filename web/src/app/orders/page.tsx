@@ -1,9 +1,11 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { FileText, ShieldAlert, Loader2 } from 'lucide-react';
+import { FileText, ShieldAlert } from 'lucide-react';
 import { fetchOrders } from '../../lib/api-client';
 import { CaseDetailOverlay } from '../../components/mission-control/CaseDetailOverlay';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { ErrorState } from '../../components/ui/ErrorState';
 import type { PurchaseOrder } from '@nexus/shared/types/procurement';
 
 const STATUS_STYLE: Record<string, string> = {
@@ -15,18 +17,56 @@ const STATUS_STYLE: Record<string, string> = {
   CANCELLED: 'bg-zinc-100 text-zinc-500'
 };
 
+function OrdersTableSkeleton() {
+  return (
+    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+      <table className="w-full text-sm text-left">
+        <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
+          <tr>
+            <th className="px-6 py-4">Order ID</th>
+            <th className="px-6 py-4">SKU &amp; Supplier</th>
+            <th className="px-6 py-4">Qty</th>
+            <th className="px-6 py-4">Amount</th>
+            <th className="px-6 py-4">Expected Delivery</th>
+            <th className="px-6 py-4">Status</th>
+            <th className="px-6 py-4 text-right">Case</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <tr key={i}>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+              <td className="px-6 py-4 space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-10" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+              <td className="px-6 py-4"><Skeleton className="h-5 w-20 rounded-full" /></td>
+              <td className="px-6 py-4 flex justify-end"><Skeleton className="h-4 w-16" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openCaseId, setOpenCaseId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     fetchOrders()
       .then((data) => { if (!cancelled) setOrders(data); })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-50 relative">
@@ -38,22 +78,16 @@ export default function OrdersPage() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              Failed to load orders: {error}
-            </div>
-          )}
-
-          {!orders && !error ? (
-            <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-400">
-              <Loader2 size={16} className="animate-spin" /> Loading orders…
-            </div>
-          ) : orders && orders.length === 0 ? (
+          {error ? (
+            <ErrorState message={`Failed to load orders: ${error}`} onRetry={() => setReloadKey((k) => k + 1)} />
+          ) : !orders ? (
+            <OrdersTableSkeleton />
+          ) : orders.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-zinc-200 rounded-xl p-12 text-center text-sm text-zinc-500">
               No purchase orders yet.
             </div>
           ) : (
-            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm animate-fade-in">
               <table className="w-full text-sm text-left">
                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
                   <tr>

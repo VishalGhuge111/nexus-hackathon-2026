@@ -7,18 +7,48 @@
 
 /* Thin, low-contrast scrollbar for the Audit Timeline's internal scroll area —
    the default OS scrollbar reads as an unstyled/unfinished edge against the
-   dark control-tower theme. Firefox + WebKit only; no functional dependency. */
+   white enterprise theme. Firefox + WebKit only; no functional dependency. */
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-slate-700) transparent;
+  scrollbar-color: var(--color-zinc-300) transparent;
 }
 .scroll-thin::-webkit-scrollbar {
   width: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background-color: var(--color-slate-700);
+  background-color: var(--color-zinc-300);
   border-radius: 9999px;
 }
 .scroll-thin::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Shared shimmer for skeleton loading placeholders — a moving gradient reads
+   as "actively loading" more clearly than a flat opacity pulse. */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--color-zinc-200) 25%, var(--color-zinc-100) 37%, var(--color-zinc-200) 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.18s ease-out;
 }

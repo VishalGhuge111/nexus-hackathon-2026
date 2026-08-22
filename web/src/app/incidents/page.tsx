@@ -7,9 +7,10 @@ import type { DashboardSummary } from '../../lib/api-client';
 import { AlertTriangle, Filter, Search } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { TriggerEventButton } from '../../components/dashboard/TriggerEventButton';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 export default function IncidentsPage() {
-  const { data, isLoading, refresh } = usePolling<DashboardSummary>('/api/dashboard/summary', 10000);
+  const { data, isLoading, error, refresh } = usePolling<DashboardSummary>('/api/dashboard/summary', 10000);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -58,13 +59,21 @@ export default function IncidentsPage() {
         </div>
       </div>
       
-      <div className="flex-1 p-6">
-        <IncidentGrid
-          cases={filteredCases}
-          loading={isLoading}
-          selectedId={selectedId}
-          onSelect={(id) => setSelectedId(id)}
-        />
+      <div className="flex-1 p-6 space-y-4">
+        {error && !data && (
+          <ErrorState message={`Failed to load incidents: ${error}`} onRetry={() => refresh()} />
+        )}
+        {error && data && (
+          <ErrorState message={`Live updates interrupted: ${error}`} onRetry={() => refresh()} compact />
+        )}
+        {(!error || data) && (
+          <IncidentGrid
+            cases={filteredCases}
+            loading={isLoading && !data}
+            selectedId={selectedId}
+            onSelect={(id) => setSelectedId(id)}
+          />
+        )}
       </div>
 
       {selectedId && <CaseDetailOverlay caseId={selectedId} onClose={() => setSelectedId(null)} />}

@@ -1,23 +1,50 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Truck, AlertTriangle, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
+import { Truck, AlertTriangle, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { fetchOrders } from '../../lib/api-client';
 import { CaseDetailOverlay } from '../../components/mission-control/CaseDetailOverlay';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { ErrorState } from '../../components/ui/ErrorState';
 import type { PurchaseOrder } from '@nexus/shared/types/procurement';
+
+function ShipmentCardSkeleton() {
+  return (
+    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="p-5 flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="space-y-2 text-right">
+            <Skeleton className="h-3 w-24 ml-auto" />
+            <Skeleton className="h-4 w-20 ml-auto" />
+          </div>
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ShipmentsPage() {
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openCaseId, setOpenCaseId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     fetchOrders()
       .then((data) => { if (!cancelled) setOrders(data); })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-50 relative">
@@ -29,17 +56,15 @@ export default function ShipmentsPage() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto space-y-4">
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              Failed to load shipments: {error}
-            </div>
-          )}
-
-          {!orders && !error ? (
-            <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-400">
-              <Loader2 size={16} className="animate-spin" /> Loading shipments…
-            </div>
-          ) : orders && orders.length === 0 ? (
+          {error ? (
+            <ErrorState message={`Failed to load shipments: ${error}`} onRetry={() => setReloadKey((k) => k + 1)} />
+          ) : !orders ? (
+            <>
+              <ShipmentCardSkeleton />
+              <ShipmentCardSkeleton />
+              <ShipmentCardSkeleton />
+            </>
+          ) : orders.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-zinc-200 rounded-xl p-12 text-center text-sm text-zinc-500">
               No purchase orders yet.
             </div>
@@ -47,7 +72,7 @@ export default function ShipmentsPage() {
             (orders ?? []).map((o) => {
               const isDelayed = o.status === 'DELAYED';
               return (
-                <div key={o.id} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                <div key={o.id} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm animate-fade-in">
                   <div className="p-5 flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDelayed ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>

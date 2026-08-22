@@ -8,45 +8,40 @@ export function EscalationModal({
   approvalRequest,
   onApprove,
   onReject,
-  onDismiss,
-  isLive = false
+  onDismiss
 }: {
   open: boolean;
   approvalRequest: ApprovalRequest;
   onApprove: () => void;
   onReject: () => void;
   onDismiss: () => void;
-  /** See ApprovalBoundaryPanel's isLive doc — controls the brief's disclaimer wording. */
-  isLive?: boolean;
 }): React.ReactElement | null {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onDismiss}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4" onClick={onDismiss}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-amber-800 bg-slate-950 p-5 shadow-2xl shadow-black/50"
+        className="w-full max-w-md rounded-xl border border-amber-200 bg-white p-5 shadow-2xl"
       >
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold tracking-wide text-amber-300 uppercase">Human must authorize</h3>
-          <button onClick={onDismiss} className="text-slate-500 hover:text-slate-300" aria-label="Dismiss">
+          <h3 className="text-sm font-semibold tracking-wide text-amber-700 uppercase">Human must authorize</h3>
+          <button onClick={onDismiss} className="cursor-pointer text-zinc-400 hover:text-zinc-700" aria-label="Dismiss">
             ✕
           </button>
         </div>
 
-        <div className="mb-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-sky-400 uppercase">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Agent recommends
+        <div className="mb-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-sky-600 uppercase">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> NEXUS recommends
           </div>
-          <p className="text-sm leading-relaxed text-slate-300">{approvalRequest.brief}</p>
-          <p className="mt-2 text-[11px] text-slate-600">
-            {isLive
-              ? "Decision brief — evidence drawn from this run's live case, plan, and validator output (deterministic demo run); the approval decision is yours to make."
-              : "Decision brief — static demo content, not a live model output."}
+          <p className="text-sm leading-relaxed text-zinc-700">{approvalRequest.brief}</p>
+          <p className="mt-2 text-[11px] text-zinc-400">
+            Decision brief — evidence drawn from this run&apos;s live case, plan, and validator output; the approval decision is yours to make.
           </p>
         </div>
 
-        <div className="mb-3 flex items-center gap-2 pl-1 text-slate-700" aria-hidden>
+        <div className="mb-3 flex items-center gap-2 pl-1 text-zinc-300" aria-hidden>
           <span className="font-mono text-sm leading-none">&darr;</span>
           <span className="text-[10px] tracking-wide uppercase">cannot proceed without</span>
         </div>
@@ -54,23 +49,23 @@ export function EscalationModal({
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              onApprove();
-              onDismiss();
-            }}
-            className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600"
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => {
               onReject();
               onDismiss();
             }}
-            className="rounded bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600"
+            className="cursor-pointer rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50"
           >
             Reject
           </button>
-          <button onClick={onDismiss} className="ml-auto rounded px-3 py-1.5 text-xs text-slate-500 hover:text-slate-300">
+          <button
+            onClick={() => {
+              onApprove();
+              onDismiss();
+            }}
+            className="cursor-pointer rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
+          >
+            Approve Recovery
+          </button>
+          <button onClick={onDismiss} className="ml-auto cursor-pointer rounded-lg px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-700">
             Dismiss
           </button>
         </div>

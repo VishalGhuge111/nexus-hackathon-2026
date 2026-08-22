@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from 'react';
 import { Bell, ShieldCheck, User } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -9,35 +9,35 @@ export function TopNav() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <div className="h-14 bg-zinc-950 text-white flex items-center justify-between px-6 shrink-0 z-40 relative">
+    <div className="h-14 bg-white border-b border-zinc-200 flex items-center justify-between px-6 shrink-0 z-40 relative">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <ShieldCheck size={18} className="text-white" />
           </div>
-          <span className="font-bold text-lg tracking-tight">NEXUS</span>
+          <span className="font-bold text-lg tracking-tight text-zinc-900">NEXUS</span>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="text-zinc-400 hover:text-white transition-colors relative" onClick={() => setNotifOpen(!notifOpen)}>
+        <button className="cursor-pointer text-zinc-400 hover:text-zinc-900 transition-colors relative" onClick={() => setNotifOpen(!notifOpen)}>
           <Bell size={18} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-zinc-950">
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-white">
               {unreadCount}
             </span>
           )}
         </button>
-        <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 text-zinc-400">
+        <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200 text-zinc-500">
           <User size={16} />
         </div>
       </div>
 
       {notifOpen && (
-        <div className="absolute top-14 right-6 w-80 bg-white border border-zinc-200 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute top-14 right-6 w-80 bg-white border border-zinc-200 rounded-xl shadow-xl overflow-hidden z-50">
           <div className="flex items-center justify-between p-4 border-b border-zinc-100 bg-zinc-50">
             <h3 className="font-bold text-zinc-900 text-sm">Notifications</h3>
-            <button onClick={markAllRead} className="text-xs text-blue-600 font-medium hover:underline">Mark all read</button>
+            <button onClick={markAllRead} className="cursor-pointer text-xs text-blue-600 font-medium hover:underline">Mark all read</button>
           </div>
           <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
@@ -51,9 +51,9 @@ export function TopNav() {
                       <h4 className="text-sm font-bold text-zinc-900">{n.title}</h4>
                       <p className="text-xs text-zinc-500 mt-1">{n.message}</p>
                       {n.action && (
-                        <button 
+                        <button
                           onClick={() => { bus.publish(n.action!.event, n.action!.payload); setNotifOpen(false); }}
-                          className="mt-2 px-3 py-1.5 bg-zinc-900 text-white rounded text-xs font-bold hover:bg-zinc-800 transition-colors"
+                          className="mt-2 cursor-pointer px-3 py-1.5 bg-zinc-900 text-white rounded text-xs font-bold hover:bg-zinc-800 transition-colors"
                         >
                           {n.action.label}
                         </button>

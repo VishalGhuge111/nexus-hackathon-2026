@@ -19,10 +19,10 @@ export function DoNothingVsNexus({
 }): React.ReactElement {
   return (
     <div>
-      <div className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">Do-Nothing vs NEXUS Plan (§30)</div>
+      <div className="mb-2 text-[11px] uppercase tracking-wide text-zinc-400">Do-Nothing vs NEXUS Plan (§30)</div>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-left text-slate-500">
+          <tr className="text-left text-zinc-400">
             <th className="pb-1 font-normal"></th>
             <th className="pb-1 font-normal">Do Nothing</th>
             <th className="pb-1 font-normal">NEXUS Plan</th>
@@ -40,10 +40,10 @@ export function DoNothingVsNexus({
 
 function Row({ label, a, b }: { label: string; a: string; b: string }): React.ReactElement {
   return (
-    <tr className="border-t border-slate-900">
-      <td className="py-1 text-slate-400">{label}</td>
-      <td className="py-1 font-mono text-slate-300">{a}</td>
-      <td className="py-1 font-mono text-slate-100">{b}</td>
+    <tr className="border-t border-zinc-100">
+      <td className="py-1.5 text-zinc-500">{label}</td>
+      <td className="py-1.5 font-mono text-zinc-500">{a}</td>
+      <td className="py-1.5 font-mono font-semibold text-zinc-900">{b}</td>
     </tr>
   );
 }

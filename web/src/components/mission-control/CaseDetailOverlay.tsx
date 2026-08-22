@@ -7,21 +7,89 @@
 // same call the Vercel cron makes in production (see vercel.json) — there is no
 // cron running in local dev, so this is what actually drives the agent loop here.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { fetchCaseDetail, resolveApproval, type CaseDetail } from '@/lib/api-client';
-import { DemoDataBanner } from './DemoDataBanner';
+import { coverageDays as computeCoverageDays, safetyStockRisk, productionRequirement as computeProductionRequirement } from '@nexus/shared/calculations';
+import type { RfqResponse } from '@nexus/shared/types/procurement';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { StatusPill, caseStatusTone } from './StatusPill';
 import { RiskImpactSummary } from './RiskImpactSummary';
 import { LiveAgentTracePanel } from './LiveAgentTracePanel';
+import { InventoryCoveragePanel } from './InventoryCoveragePanel';
+import { SupplierShipmentPanel } from './SupplierShipmentPanel';
 import { RecoveryPlanPanel } from './RecoveryPlanPanel';
 import { PlanVersionLineage } from './PlanVersionLineage';
 import { ApprovalBoundaryPanel } from './ApprovalBoundaryPanel';
 import { EscalationModal } from './EscalationModal';
 import { AuditTimeline } from './AuditTimeline';
+import { IncidentFlowStepper, type FlowStep } from './IncidentFlowStepper';
 
 const TERMINAL_STATUSES = new Set(['GOAL_ACHIEVED', 'NO_FEASIBLE_RECOVERY']);
 const POLL_MS = 2500;
+
+function buildFlowSteps(detail: CaseDetail): FlowStep[] {
+  const { caseRecord, agentState, activePlanVersion, latestValidationResult, pendingApproval, auditEvents, planVersions } = detail;
+  const done = TERMINAL_STATUSES.has(caseRecord.status);
+
+  const approvalRequired =
+    pendingApproval !== null ||
+    caseRecord.status === 'HUMAN_ESCALATED_AWAITING_DECISION' ||
+    auditEvents.some((e) => e.type === 'HUMAN_ACTION');
+
+  return [
+    { key: 'risk', label: 'Risk Detected', state: 'done', note: `${caseRecord.continuityImpact.unitsAtRisk} units at risk` },
+    { key: 'agent', label: 'Agent Analysis', state: agentState ? 'done' : 'current' },
+    {
+      key: 'plan',
+      label: 'Recovery Plan',
+      state: activePlanVersion ? 'done' : agentState ? 'current' : 'pending',
+      note: activePlanVersion ? `v${activePlanVersion.version}${planVersions.length > 1 ? ` of ${planVersions.length}` : ''}` : undefined
+    },
+    {
+      key: 'validate',
+      label: 'Validation',
+      state: latestValidationResult ? 'done' : activePlanVersion ? 'current' : 'pending',
+      note: latestValidationResult ? (latestValidationResult.overallPassed ? 'Passed' : 'Failed — replanning') : undefined
+    },
+    {
+      key: 'approval',
+      label: 'Human Approval',
+      state: !approvalRequired ? (activePlanVersion ? 'done' : 'pending') : pendingApproval ? 'current' : 'done',
+      note: !approvalRequired ? undefined : pendingApproval ? 'Awaiting decision' : 'Resolved'
+    },
+    { key: 'outcome', label: 'Outcome', state: done ? 'done' : 'pending', note: done ? caseRecord.status.replace(/_/g, ' ') : undefined }
+  ];
+}
+
+function CaseDetailSkeleton(): React.ReactElement {
+  return (
+    <div className="mx-auto max-w-[1600px] px-6 py-6">
+      <Skeleton className="mb-4 h-16 w-full rounded-xl" />
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <Skeleton className="mb-4 h-4 w-40" />
+            <Skeleton className="mb-2 h-8 w-24" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <Skeleton className="mb-4 h-4 w-32" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <Skeleton className="mb-4 h-4 w-36" />
+            <Skeleton className="mb-3 h-16 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose: () => void }) {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
@@ -88,42 +156,86 @@ export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose
     }
   }
 
+  const flowSteps = useMemo(() => (detail ? buildFlowSteps(detail) : []), [detail]);
+
+  const inventoryCoverage = useMemo(() => {
+    if (!detail?.inventory || !detail.productionOrder) return null;
+    const coverage = computeCoverageDays({
+      usableStock: detail.inventory.usableStock,
+      dailyUsageRate: detail.inventory.dailyUsageRate
+    });
+    const safety = safetyStockRisk({
+      usableStock: detail.inventory.usableStock,
+      safetyStockThreshold: detail.inventory.safetyStockThreshold
+    });
+    const requirement = computeProductionRequirement({
+      plannedQty: detail.productionOrder.plannedQty,
+      bomQtyPerUnit: detail.productionOrder.bomQtyPerUnit
+    });
+    return {
+      coverageDays: coverage.coverageDays,
+      safetyStockRatio: safety.disabled ? null : safety.ratio,
+      productionRequirement: requirement.status === 'OK' ? requirement.value : 0
+    };
+  }, [detail]);
+
+  const rfqResponses = useMemo(() => {
+    const map: Record<string, RfqResponse> = {};
+    for (const rfq of detail?.rfqs ?? []) {
+      for (const response of rfq.responses) map[response.supplierId] = response;
+    }
+    return map;
+  }, [detail]);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950 text-slate-100">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-6 py-3 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-sm text-slate-400">{caseId}</span>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-50 text-zinc-900">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-200 bg-white/95 px-6 py-3.5 backdrop-blur">
+        <div className="flex min-w-0 items-center gap-3">
           {detail && (
             <>
+              <span
+                className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                  detail.caseRecord.priority === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-zinc-100 text-zinc-600'
+                }`}
+              >
+                {detail.caseRecord.priority}
+              </span>
               <StatusPill label={detail.caseRecord.status.replace(/_/g, ' ')} tone={caseStatusTone(detail.caseRecord.status)} />
-              <span className="text-xs text-slate-500">{detail.caseRecord.priority}</span>
             </>
           )}
+          <span className="truncate font-mono text-xs text-zinc-400" title={caseId}>
+            {caseId}
+          </span>
         </div>
         <button
           onClick={onClose}
-          className="rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200"
+          className="shrink-0 cursor-pointer rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
           aria-label="Close case detail"
         >
           <X size={18} />
         </button>
       </div>
 
-      <DemoDataBanner live />
-
       {error && (
-        <div className="border-b border-red-900 bg-red-950/60 px-6 py-1.5 text-xs text-red-300">Error: {error}</div>
+        <div className="px-6 pt-4">
+          <ErrorState message={error} onRetry={() => refresh(caseId)} compact />
+        </div>
       )}
 
       {!detail ? (
-        <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500">
-          <Loader2 size={16} className="animate-spin" /> Loading case {caseId}…
+        <div className="animate-fade-in">
+          <CaseDetailSkeleton />
         </div>
       ) : (
-        <div className="mx-auto max-w-[1600px] px-6 py-6">
-          <div className="mb-3 text-[11px] font-semibold tracking-widest text-slate-600 uppercase">Active incident</div>
-          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-            <div className="space-y-5">
+        <div className="mx-auto max-w-[1600px] px-6 py-6 animate-fade-in">
+          <div className="mb-3 text-[11px] font-semibold tracking-widest text-zinc-400 uppercase">Active incident</div>
+
+          <div className="mb-6">
+            <IncidentFlowStepper steps={flowSteps} />
+          </div>
+
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
               <RiskImpactSummary
                 riskSignals={detail.caseRecord.riskSignals}
                 unitsAtRisk={detail.caseRecord.continuityImpact.unitsAtRisk}
@@ -132,9 +244,25 @@ export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose
               {detail.agentState && (
                 <LiveAgentTracePanel agentState={detail.agentState} auditEvents={detail.auditEvents} />
               )}
+              {inventoryCoverage && detail.inventory && (
+                <InventoryCoveragePanel
+                  inventory={detail.inventory}
+                  coverageDays={inventoryCoverage.coverageDays}
+                  safetyStockRatio={inventoryCoverage.safetyStockRatio}
+                  productionRequirement={inventoryCoverage.productionRequirement}
+                />
+              )}
+              {detail.supplierEligibility.length > 0 && (
+                <SupplierShipmentPanel
+                  supplierEligibility={detail.supplierEligibility}
+                  purchaseOrders={detail.purchaseOrders}
+                  disruptedSupplierId={detail.disruptedSupplierId}
+                  rfqResponses={rfqResponses}
+                />
+              )}
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
               {detail.activePlanVersion && detail.latestValidationResult && detail.doNothingVsNexus ? (
                 <RecoveryPlanPanel
                   activePlanVersion={detail.activePlanVersion}
@@ -142,7 +270,7 @@ export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose
                   comparison={detail.doNothingVsNexus}
                 />
               ) : (
-                <p className="rounded-lg border border-slate-800 p-4 text-sm text-slate-500">
+                <p className="rounded-xl border border-dashed border-zinc-200 bg-white p-6 text-center text-sm text-zinc-400">
                   No recovery plan proposed yet.
                 </p>
               )}
@@ -151,7 +279,7 @@ export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose
           </div>
 
           {detail.pendingApproval && (
-            <div className="mt-5">
+            <div className="mt-6">
               <ApprovalBoundaryPanel
                 approvalRequest={detail.pendingApproval}
                 decision={detail.pendingApproval.status}
@@ -159,13 +287,12 @@ export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose
                 onReject={() => handleDecision('REJECTED')}
                 onOpenModal={() => setModalOpen(true)}
                 disabled={resolving}
-                isLive
               />
             </div>
           )}
 
-          <div className="mt-10 border-t border-slate-900 pt-6">
-            <div className="mb-3 text-[11px] font-semibold tracking-widest text-slate-600 uppercase">Audit &amp; activity</div>
+          <div className="mt-8 border-t border-zinc-200 pt-6">
+            <div className="mb-3 text-[11px] font-semibold tracking-widest text-zinc-400 uppercase">Audit &amp; activity</div>
             <AuditTimeline auditEvents={detail.auditEvents} />
           </div>
         </div>
@@ -178,7 +305,6 @@ export function CaseDetailOverlay({ caseId, onClose }: { caseId: string; onClose
           onApprove={() => handleDecision('APPROVED')}
           onReject={() => handleDecision('REJECTED')}
           onDismiss={() => setModalOpen(false)}
-          isLive
         />
       )}
     </div>

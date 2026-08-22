@@ -22,23 +22,17 @@ export function Panel({
 }): React.ReactElement {
   const isPrimary = tone === "primary";
   return (
-    <section
-      className={`rounded-lg border ${
-        isPrimary ? "border-slate-700 bg-slate-900/60 shadow-lg shadow-black/20" : "border-slate-800/70 bg-slate-900/25"
-      } ${className}`}
-    >
-      <header
-        className={`flex items-start justify-between gap-3 border-b px-5 py-3.5 ${isPrimary ? "border-slate-700" : "border-slate-800/70"}`}
-      >
+    <section className={`rounded-xl border border-zinc-200 bg-white shadow-sm ${className}`}>
+      <header className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-3.5">
         <div>
           <h2
-            className={`font-semibold ${
-              isPrimary ? "text-[13px] tracking-wide text-slate-100 uppercase" : "text-sm tracking-wide text-slate-300"
+            className={`font-bold ${
+              isPrimary ? "text-[11px] tracking-[0.15em] text-zinc-900 uppercase" : "text-sm tracking-wide text-zinc-600"
             }`}
           >
             {title}
           </h2>
-          {subtitle && <p className="mt-1 text-[11px] leading-snug text-slate-600">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-[11px] leading-snug text-zinc-400">{subtitle}</p>}
         </div>
         {headerRight}
       </header>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { TopNav } from "@/components/layout/TopNav";
+import { CommandPalette } from "@/components/layout/CommandPalette";
 
 // A dedicated typeface (vs. the default system-font fallback) is one of the
 // cheapest, highest-leverage signals that separates a "control tower" product
@@ -30,7 +33,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${interSans.variable} ${plexMono.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <div className="flex h-screen bg-zinc-50 text-zinc-900">
+          <Sidebar />
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <TopNav />
+            {children}
+          </div>
+        </div>
+        <CommandPalette />
       </body>
     </html>
   );

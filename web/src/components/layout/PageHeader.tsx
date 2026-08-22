@@ -1,8 +1,7 @@
 ﻿'use client';
 import React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
@@ -14,26 +13,9 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, icon, actions, showBack }: PageHeaderProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  
-  const segments = pathname.split('/').filter(Boolean);
-  const isRoot = segments.length === 0;
 
   return (
-    <div className="bg-white border-b border-zinc-200 px-8 py-5 shrink-0 flex flex-col gap-4 sticky top-0 z-20">
-      {/* Nav Stack / Breadcrumbs */}
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-        <Link href="/" className="hover:text-blue-600 transition-colors flex items-center gap-1">
-          Mission Control
-        </Link>
-        {!isRoot && (
-          <>
-            <ChevronRight size={12} className="text-zinc-300" />
-            <span className="text-zinc-800">{title}</span>
-          </>
-        )}
-      </div>
-
+    <div className="bg-white border-b border-zinc-200 px-8 py-5 shrink-0 sticky top-0 z-20">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {showBack && (

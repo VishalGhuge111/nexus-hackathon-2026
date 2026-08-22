@@ -6,10 +6,13 @@ import type { ApprovalRequest } from '@nexus/shared/types/validation';
 import type { AuditEvent } from '@nexus/shared/types/audit';
 import type { ProductionOrder } from '@nexus/shared/types/production';
 import type { InventoryRecord } from '@nexus/shared/types/inventory';
-import type { PurchaseOrder, RecoveryPlanVersion } from '@nexus/shared/types/procurement';
+import type { PurchaseOrder, RecoveryPlanVersion, RFQ } from '@nexus/shared/types/procurement';
 import type { Case } from '@nexus/shared/types/case';
 import type { Supplier } from '@nexus/shared/types/supplier';
-import { ORIGINAL_PO_ID } from '@nexus/shared/db/demoSeed';
+import type { EligibilityResult } from '@nexus/shared/supplier';
+import { ORIGINAL_PO_ID, ORIGINAL_SUPPLIER_ID, ALTERNATE_SUPPLIER_ID, PRODUCTION_ORDER_ID } from '@nexus/shared/db/demoSeed';
+
+export { ORIGINAL_PO_ID, ORIGINAL_SUPPLIER_ID, ALTERNATE_SUPPLIER_ID, PRODUCTION_ORDER_ID };
 
 export type ApprovalDecision = 'APPROVED' | 'REJECTED';
 
@@ -53,6 +56,9 @@ export interface CaseDetail {
     nexusPlan: { coverageDays: number | null; deadlineBreached: boolean; unitsAtRisk: number; costImpact: number };
   } | null;
   auditEvents: AuditEvent[];
+  rfqs: RFQ[];
+  supplierEligibility: { supplier: Supplier; result: EligibilityResult }[];
+  disruptedSupplierId: string | null;
 }
 
 export async function fetchDashboardSummary(): Promise<DashboardSummary> {
@@ -89,6 +95,9 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetail> {
     inventory?: InventoryRecord | null;
     doNothingVsNexus?: CaseDetail['doNothingVsNexus'];
     auditEvents?: AuditEvent[];
+    rfqs?: RFQ[];
+    supplierEligibility?: { supplier: Supplier; result: EligibilityResult }[];
+    disruptedSupplierId?: string | null;
   };
 
   return {
@@ -102,7 +111,10 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetail> {
     productionOrder: json.productionOrder ?? null,
     inventory: json.inventory ?? null,
     doNothingVsNexus: json.doNothingVsNexus ?? null,
-    auditEvents: json.auditEvents ?? []
+    auditEvents: json.auditEvents ?? [],
+    rfqs: json.rfqs ?? [],
+    supplierEligibility: json.supplierEligibility ?? [],
+    disruptedSupplierId: json.disruptedSupplierId ?? null
   };
 }
 
@@ -183,17 +195,49 @@ export function usePolling<T>(url: string, intervalMs = 5000) {
 // real control instead of requiring a terminal.
 // ---------------------------------------------------------------------------
 
-export async function triggerShipmentDelay(delayHours = 24): Promise<{ caseId: string; case: Case }> {
+async function postAgentEvent(type: string, payload: Record<string, unknown>): Promise<{ caseId: string; case: Case }> {
   const response = await fetch('/api/agent/event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'SHIPMENT_DELAY', payload: { poId: ORIGINAL_PO_ID, delayHours } })
+    body: JSON.stringify({ type, payload })
   });
   const json = await response.json();
   if (!response.ok || !json.caseId) {
     throw new Error(json.error ?? `Failed to trigger event: ${response.status}`);
   }
   return json as { caseId: string; case: Case };
+}
+
+export async function triggerShipmentDelay(delayHours = 24): Promise<{ caseId: string; case: Case }> {
+  return postAgentEvent('SHIPMENT_DELAY', { poId: ORIGINAL_PO_ID, delayHours });
+}
+
+// supplier-orbital's real seeded maxCapacityPerCycle (shared/db/demoSeed.ts) is
+// 1000 — computing the post-drop target off that real known base rather than
+// re-fetching it keeps this a single-request trigger.
+const ORIGINAL_SUPPLIER_BASE_CAPACITY = 1000;
+
+export async function triggerSupplierCapacityDrop(capacityDropPercent = 50): Promise<{ caseId: string; case: Case }> {
+  return postAgentEvent('SUPPLIER_CAPACITY_DROP', {
+    supplierId: ORIGINAL_SUPPLIER_ID,
+    productionOrderId: PRODUCTION_ORDER_ID,
+    capacityDropPercent,
+    newMaxCapacityPerCycle: Math.round(ORIGINAL_SUPPLIER_BASE_CAPACITY * (1 - capacityDropPercent / 100))
+  });
+}
+
+export async function triggerDemandSpike(usageIncreasePercent = 30): Promise<{ caseId: string; case: Case }> {
+  return postAgentEvent('DEMAND_SPIKE', { productionOrderId: PRODUCTION_ORDER_ID, usageIncreasePercent });
+}
+
+export async function triggerSupplierClaimContradiction(): Promise<{ caseId: string; case: Case }> {
+  return postAgentEvent('SUPPLIER_CLAIM_CONTRADICTION', {
+    poId: ORIGINAL_PO_ID,
+    supplierId: ALTERNATE_SUPPLIER_ID,
+    productionOrderId: PRODUCTION_ORDER_ID,
+    claimedStatus: 'dispatched, in transit',
+    trackingStatus: 'label created, no carrier pickup scanned'
+  });
 }
 
 // ---------------------------------------------------------------------------

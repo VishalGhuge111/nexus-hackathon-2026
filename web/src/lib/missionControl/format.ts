@@ -32,3 +32,30 @@ export function formatSignalValue(value: number): string {
   const fixed = value.toFixed(2);
   return fixed === "-0.00" ? "0.00" : fixed;
 }
+
+/**
+ * Display-only translation of the real tool names dispatched by
+ * shared/tools/dispatch.ts (see shared/tools/primitives.ts and the
+ * supplier_eligibility_check call in shared/agent/fsm.ts) into judge-readable
+ * operational language. Purely cosmetic — the underlying AuditEvent.detail
+ * still carries the exact tool name; this never changes what's stored, only
+ * what's rendered.
+ */
+const TOOL_CALL_LABELS: Record<string, string> = {
+  inventory_lookup: "Inventory checked",
+  purchase_order_lookup: "Purchase order verified",
+  production_schedule_lookup: "Production schedule checked",
+  shipment_tracking_lookup: "Shipment tracking checked",
+  supplier_eligibility_check: "Supplier eligibility evaluated",
+  rfq_request: "Supplier quotes requested",
+  approval_check: "Approval threshold evaluated",
+  erp_update: "Recovery order created",
+  escalation_create: "Escalation raised for approval",
+  outcome_reread: "Recovery outcome verified",
+  supplier_message_send: "Supplier contacted",
+  supplier_message_receive: "Supplier reply checked"
+};
+
+export function toolCallLabel(toolName: string): string {
+  return TOOL_CALL_LABELS[toolName] ?? toolName;
+}
