@@ -45,7 +45,12 @@ describe("Shipment Delay 24h vertical slice", () => {
 
   beforeEach(() => {
     store = freshStore();
-    llm = new StubLlmClient();
+    // This suite intentionally exercises the V1-fails -> ADAPT_REPLAN -> V2-passes
+    // golden path (see the "walks EARLY_RISK_CHECK -> ..." test below), so it
+    // opts in to the stub's deliberate first-proposal undershoot. General-purpose
+    // FSM tests (tests/state-machine/fsmTransitions.test.ts) intentionally do NOT
+    // opt in, and get the default fully-covering first plan.
+    llm = new StubLlmClient({ forceInitialUndershoot: true });
   });
 
   it("opens a Case from the disruption event", async () => {

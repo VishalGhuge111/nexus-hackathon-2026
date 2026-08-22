@@ -5,16 +5,37 @@
 // be mistaken for a real Claude response (PRD §45: "must not be faked").
 import type { LlmClient, PlanProposalRequest, ProposedPlan, EscalationBriefRequest, ProposedAllocation } from "./types";
 
+export interface StubLlmClientOptions {
+  /**
+   * OPT-IN, default false. When true, the first proposal (no rejection
+   * feedback yet) deliberately undershoots so a caller can exercise a genuine
+   * VALIDATE failure -> ADAPT_REPLAN -> corrected V2 (PRD §23/Figure 3) —
+   * e.g. the Mission Control golden-path demo (tests/integration/shipmentDelay.test.ts).
+   * Default behavior (false) always proposes a fully-covering first plan, which
+   * is what general-purpose FSM tests (tests/state-machine/fsmTransitions.test.ts)
+   * and the PRD's own stub-design intent ("prove the FSM/Validator loop, not
+   * demonstrate LLM creativity") assume.
+   */
+  forceInitialUndershoot?: boolean;
+}
+
 export class StubLlmClient implements LlmClient {
+  private readonly forceInitialUndershoot: boolean;
+
+  constructor(options: StubLlmClientOptions = {}) {
+    this.forceInitialUndershoot = options.forceInitialUndershoot ?? false;
+  }
+
   async proposeRecoveryPlan(req: PlanProposalRequest): Promise<ProposedPlan> {
     const sorted = [...req.eligibleSuppliers].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
 
-    // First proposal only (no rejection feedback yet): deliberately undershoot so
-    // the golden-path demo can show a genuine VALIDATE failure -> ADAPT_REPLAN ->
-    // corrected V2 (PRD §23/Figure 3), instead of always getting it right first
-    // try. Falls through to the full-coverage logic below on any replan attempt,
-    // or if undershooting isn't possible without violating MOQ.
-    if (!req.previousPlanRejectionReason) {
+    // First proposal only (no rejection feedback yet), and only when explicitly
+    // opted in: deliberately undershoot so the caller can show a genuine
+    // VALIDATE failure -> ADAPT_REPLAN -> corrected V2 (PRD §23/Figure 3),
+    // instead of always getting it right first try. Falls through to the
+    // full-coverage logic below on any replan attempt, when not opted in, or
+    // if undershooting isn't possible without violating MOQ.
+    if (this.forceInitialUndershoot && !req.previousPlanRejectionReason) {
       const cheapest = sorted[0];
       const partialQty = cheapest ? Math.floor(req.shortageQty * 0.65) : 0;
       if (cheapest && partialQty >= cheapest.moq && partialQty < req.shortageQty) {

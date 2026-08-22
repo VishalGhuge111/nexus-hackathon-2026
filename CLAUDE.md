@@ -27,8 +27,34 @@ with an explicit FSM, deterministic TypeScript validator/calculations. See
   Neon Postgres (see README).
 - `web/src/app/page.tsx` + `web/src/components/mission-control/**` +
   `web/src/lib/missionControl/**` — the Mission Control frontend (see below).
-- `tests/` — vitest suite for `shared/` (47 tests as of this writing).
+- `tests/` — vitest suite for `shared/` (76 tests as of this writing).
 - `prisma/` — schema + seed script.
+
+## StubLlmClient: test vs. demo behavior
+
+`shared/llm/stubClient.ts`'s `proposeRecoveryPlan` has two modes, selected by an
+**opt-in** constructor option (default `false`):
+
+- **Default** (`new StubLlmClient()`, or via `shared/llm/factory.ts` when
+  `ANTHROPIC_API_KEY` is unset): always proposes a fully-covering first plan.
+  This is what `tests/state-machine/fsmTransitions.test.ts` and other
+  general-purpose FSM tests assume, and matches the stub's original design
+  intent ("prove the FSM/Validator loop, not demonstrate LLM creativity").
+- **`new StubLlmClient({ forceInitialUndershoot: true })`**: the first proposal
+  (no rejection feedback yet) deliberately undershoots the shortage, so the
+  caller can exercise a genuine `VALIDATE` failure → `ADAPT_REPLAN` → corrected
+  V2 (PRD §23/Figure 3) instead of the plan passing on the first try. Only
+  `tests/integration/shipmentDelay.test.ts` opts into this — it intentionally
+  tests the V1-fails/V2-passes golden path.
+
+**Known gap**: `shared/llm/factory.ts` (used by the live API routes /
+Mission Control demo) still constructs `StubLlmClient()` with the default
+(off). That means triggering the live "Shipment Delayed 24h" event through the
+browser will currently show V1 passing immediately, not the V1→V2 replan
+sequence — if the live demo needs to show the replan again, `factory.ts` needs
+the same `{ forceInitialUndershoot: true }` option, which was deliberately
+*not* added here (out of scope for the task that introduced this option; only
+the named test call site was updated).
 
 ## Mission Control UI (current state)
 
