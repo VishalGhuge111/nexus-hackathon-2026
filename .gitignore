@@ -3,6 +3,7 @@ node_modules/
 out/
 dist/
 lib/
+!web/src/lib/
 .firebase/
 .firebaserc
 .env

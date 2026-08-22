@@ -17,8 +17,6 @@ import type { ValidatorAllocation, ValidatorContext, ValidatorPlanInput } from "
 import {
   inventoryLookup,
   purchaseOrderLookup,
-  productionScheduleLookup,
-  shipmentTrackingLookup,
   approvalCheckTool,
   erpUpdateTool,
   escalationCreateTool,
@@ -142,11 +140,12 @@ async function handleEarlyRiskCheck(
   const productionOrder = await store.getProductionOrder(caseRecord.productionOrderId);
   if (!productionOrder) throw new Error(`ProductionOrder ${caseRecord.productionOrderId} not found`);
 
+  // productionOrder was already read directly above to build this cycle's
+  // context; a separate dispatched production_schedule_lookup call here would
+  // re-fetch the identical record and discard the result, spending a tool-call
+  // budget unit for zero additional information.
   const inventoryResult = await dispatchTool(dispatchCtx, "inventory_lookup", () =>
     inventoryLookup(store, productionOrder.sku)
-  );
-  await dispatchTool(dispatchCtx, "production_schedule_lookup", () =>
-    productionScheduleLookup(store, productionOrder.id)
   );
 
   if (inventoryResult.status !== "SUCCESS" || !inventoryResult.data) {
@@ -214,14 +213,17 @@ async function handleVerify(
   }
   const po = linkedPOs[0];
 
+  // §12 requires "at least one independent tool call beyond the triggering
+  // signal" — purchase_order_lookup alone satisfies that. shipment_tracking_lookup
+  // is intentionally not also called here: in this simulation it derives its
+  // {lastEvent, status} directly from the same PurchaseOrder record (see
+  // shared/tools/primitives.ts), so calling both provides zero additional
+  // independent evidence while consuming a second tool-call-budget unit.
   const poResult = await dispatchTool(dispatchCtx, "purchase_order_lookup", () =>
     purchaseOrderLookup(store, po.id)
   );
-  const trackingResult = await dispatchTool(dispatchCtx, "shipment_tracking_lookup", () =>
-    shipmentTrackingLookup(store, po.id)
-  );
 
-  if (poResult.status !== "SUCCESS" || trackingResult.status !== "SUCCESS") {
+  if (poResult.status !== "SUCCESS") {
     await audit(store, caseRecord.id, agentState.cycle, "AGENT", "STATE_TRANSITION", "VERIFY inconclusive: NO_DATA, will re-check next cycle");
     await store.upsertAgentState(agentState);
     return { case: caseRecord, agentState };

@@ -1,116 +1,151 @@
 "use client";
 
+// NEXUS Mission Control (PRD §28).
+//
+// Two modes, switched by triggering the live event:
+//  - STATIC (default): renders the fixed, deterministic demo fixture in
+//    web/src/lib/missionControl/demoFixture.ts — a curated illustration of
+//    the full golden path (including a genuine Validator-computed V1 failure
+//    and V2 pass), useful as a rehearsed fallback.
+//  - LIVE: once "Shipment Delayed 24h" is clicked, the page calls the real
+//    /api/agent/event + /api/agent/tick + /api/approvals/:id/resolve routes
+//    (see web/src/app/api/**, backed by shared/agent/fsm.ts) and polls
+//    /api/cases/:id. This is the real deterministic agent — same fixture data,
+//    same stub LLM, no randomness — not a simulation of the UI.
+//
+// Level 2 panels (Inventory & Coverage, Suppliers & Shipments) always show the
+// static reference fixture even in live mode: the live API doesn't expose a
+// per-supplier eligibility breakdown, and inventing one here would misrepresent
+// suppliers (the static fixture's third supplier, QuickSource, doesn't exist in
+// the live backend's fixture) — see CLAUDE.md for the full breakdown of what's
+// genuinely live vs. illustrative.
+
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DemoDataBanner } from "@/components/mission-control/DemoDataBanner";
+import { TopStatusBar, type ProductionStatus } from "@/components/mission-control/TopStatusBar";
+import { JudgeControlStrip } from "@/components/mission-control/JudgeControlStrip";
+import { CaseListPanel } from "@/components/mission-control/CaseListPanel";
+import { LiveAgentTracePanel } from "@/components/mission-control/LiveAgentTracePanel";
+import { RiskImpactSummary } from "@/components/mission-control/RiskImpactSummary";
+import { InventoryCoveragePanel } from "@/components/mission-control/InventoryCoveragePanel";
+import { SupplierShipmentPanel } from "@/components/mission-control/SupplierShipmentPanel";
+import { RecoveryPlanPanel } from "@/components/mission-control/RecoveryPlanPanel";
+import { ApprovalBoundaryPanel } from "@/components/mission-control/ApprovalBoundaryPanel";
+import { EscalationModal } from "@/components/mission-control/EscalationModal";
+import { PlanVersionLineage } from "@/components/mission-control/PlanVersionLineage";
+import { AuditTimeline } from "@/components/mission-control/AuditTimeline";
+import type { Case } from "@nexus/shared/types/case";
+import type { AgentState } from "@nexus/shared/types/agent";
+import type { RecoveryPlanVersion, PurchaseOrder } from "@nexus/shared/types/procurement";
+import type { ValidationResult, ApprovalRequest } from "@nexus/shared/types/validation";
+import type { AuditEvent } from "@nexus/shared/types/audit";
+import type { ScenarioResult } from "@/components/mission-control/DoNothingVsNexus";
+import { ORIGINAL_PO_ID } from "@nexus/shared/db/demoSeed";
 
-interface DashboardCase {
-  id: string;
-  status: string;
-  priority: string;
-  continuityImpact: { unitsAtRisk: number; deadlineBreached: boolean };
-  activePlanVersion: number;
-  replanCount: number;
-}
+import {
+  cases as staticCases,
+  primaryCase,
+  agentState as staticAgentState,
+  auditEvents as staticAuditEvents,
+  riskSignals as staticRiskSignals,
+  inventoryRecord,
+  coverage,
+  safetyStock,
+  productionRequirementQty,
+  supplierEligibility,
+  purchaseOrders as staticPurchaseOrders,
+  planVersions as staticPlanVersions,
+  v2ValidationResult,
+  approvalRequest as staticApprovalRequest,
+  doNothingVsNexus as staticDoNothingVsNexus,
+  kpis as staticKpis
+} from "@/lib/missionControl/demoFixture";
 
-interface DashboardSummary {
-  kpis: {
-    coverageDaysRemaining: number | null;
-    ordersAtRiskCount: number;
-    unitsAtRisk: number;
-    deadlinesBreachedCount: number;
-    emergencyBudgetRemaining: number;
-  };
-  cases: DashboardCase[];
-}
+const TERMINAL_STATUSES = new Set(["GOAL_ACHIEVED", "NO_FEASIBLE_RECOVERY"]);
+const POLL_MS = 2000;
 
-interface ValidationCheck {
-  name: string;
-  passed: boolean;
-  expected: number | string;
-  actual: number | string;
-}
-
-interface AuditEvent {
-  id: string;
-  cycle: number;
-  timestamp: string;
-  actor: string;
-  type: string;
-  summary: string;
-}
-
-interface CaseDetail {
-  case: DashboardCase & { id: string };
-  agentState: { currentStep: string; cycle: number; toolCallCount: number; lastToolCalls: string[] } | null;
-  activePlanVersion: {
-    version: number;
-    plan: { allocations: { supplierId: string; qty: number; unitPrice: number }[]; totalCost: number; expectedDeliveryDate: string };
-    invalidated_assumptions: string[];
-    carried_forward_actions: string[];
-    reason_for_change: string;
-  } | null;
-  latestValidationResult: { checks: ValidationCheck[]; overallPassed: boolean; withinApprovalThreshold: boolean } | null;
-  pendingApproval: { id: string; brief: string; status: string } | null;
-  doNothingVsNexus: {
-    doNothing: { coverageDays: number | null; deadlineBreached: boolean; unitsAtRisk: number; costImpact: number };
-    nexusPlan: { coverageDays: number | null; deadlineBreached: boolean; unitsAtRisk: number; costImpact: number };
-  } | null;
+interface LiveDetail {
+  case: Case;
+  agentState: AgentState | null;
+  activePlanVersion: (RecoveryPlanVersion & { id: string }) | null;
+  planVersions: (RecoveryPlanVersion & { id: string })[];
+  latestValidationResult: ValidationResult | null;
+  pendingApproval: ApprovalRequest | null;
+  purchaseOrders: PurchaseOrder[];
+  doNothingVsNexus: { doNothing: ScenarioResult; nexusPlan: ScenarioResult } | null;
   auditEvents: AuditEvent[];
 }
 
-const POLL_MS = 4000;
-const ORIGINAL_PO_ID = "po-1001";
-
-function StatusBadge({ status }: { status: string }): React.ReactElement {
-  const color =
-    status === "GOAL_ACHIEVED"
-      ? "bg-emerald-600"
-      : status === "NO_FEASIBLE_RECOVERY"
-        ? "bg-red-700"
-        : status === "HUMAN_ESCALATED_AWAITING_DECISION"
-          ? "bg-amber-600"
-          : "bg-sky-700";
-  return <span className={`rounded px-2 py-0.5 text-xs font-medium text-white ${color}`}>{status}</span>;
+function deriveProductionStatus(deadlinesBreachedCount: number, ordersAtRiskCount: number): ProductionStatus {
+  if (deadlinesBreachedCount > 0) return "BREACHED";
+  if (ordersAtRiskCount > 0) return "AT_RISK";
+  return "PROTECTED";
 }
 
 export default function Page(): React.ReactElement {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<CaseDetail | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [lastError, setLastError] = useState<string | null>(null);
+  // Static-mode local state (unchanged behavior when no live case is running).
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(primaryCase.id);
+  const [staticApprovalDecision, setStaticApprovalDecision] = useState<ApprovalRequest["status"]>(
+    staticApprovalRequest.status
+  );
+
+  // Live-mode state.
+  const [liveCaseId, setLiveCaseId] = useState<string | null>(null);
+  const [liveDetail, setLiveDetail] = useState<LiveDetail | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [cachedApproval, setCachedApproval] = useState<ApprovalRequest | null>(null);
+  const [liveResolvedDecision, setLiveResolvedDecision] = useState<ApprovalRequest["status"] | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const refresh = useCallback(async () => {
-    try {
-      await fetch("/api/agent/tick", { method: "POST" });
-      const summaryRes = await fetch("/api/dashboard/summary");
-      const summaryJson: DashboardSummary = await summaryRes.json();
-      setSummary(summaryJson);
+  // The escalation modal never auto-opens (fixed regression from an earlier
+  // pass) — it only opens via the explicit "Review Approval" CTA.
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
-      const activeCaseId = selectedCaseId ?? summaryJson.cases[0]?.id ?? null;
-      if (activeCaseId) {
-        setSelectedCaseId(activeCaseId);
-        const detailRes = await fetch(`/api/cases/${activeCaseId}`);
-        if (detailRes.ok) setDetail(await detailRes.json());
-      } else {
-        setDetail(null);
-      }
-      setLastError(null);
-    } catch (err) {
-      setLastError(err instanceof Error ? err.message : String(err));
-    }
-  }, [selectedCaseId]);
+  const isLive = liveCaseId !== null;
+
+  const fetchLiveDetail = useCallback(async (caseId: string) => {
+    const res = await fetch(`/api/cases/${caseId}`);
+    if (!res.ok) return;
+    const detail: LiveDetail = await res.json();
+    setLiveDetail(detail);
+    if (detail.pendingApproval) setCachedApproval(detail.pendingApproval);
+  }, []);
 
   useEffect(() => {
-    refresh();
-    pollRef.current = setInterval(refresh, POLL_MS);
+    if (!liveCaseId) return;
+    let cancelled = false;
+
+    async function pollOnce(): Promise<void> {
+      try {
+        await fetch("/api/agent/tick", { method: "POST" });
+        if (cancelled) return;
+        await fetchLiveDetail(liveCaseId!);
+      } catch (err) {
+        if (!cancelled) setLiveError(err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    pollOnce();
+    pollRef.current = setInterval(() => {
+      if (liveDetail && TERMINAL_STATUSES.has(liveDetail.case.status)) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        return;
+      }
+      pollOnce();
+    }, POLL_MS);
+
     return () => {
+      cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveCaseId, fetchLiveDetail]);
 
   async function triggerShipmentDelay(): Promise<void> {
-    setBusy(true);
+    setLiveError(null);
+    setLiveResolvedDecision(null);
+    setCachedApproval(null);
+    setModalOpen(false);
     try {
       const res = await fetch("/api/agent/event", {
         method: "POST",
@@ -118,214 +153,172 @@ export default function Page(): React.ReactElement {
         body: JSON.stringify({ type: "SHIPMENT_DELAY", payload: { poId: ORIGINAL_PO_ID, delayHours: 24 } })
       });
       const json = await res.json();
-      if (json.caseId) setSelectedCaseId(json.caseId);
-      await refresh();
+      if (!res.ok || !json.caseId) {
+        setLiveError(json.error ?? "Failed to trigger event");
+        return;
+      }
+      setLiveCaseId(json.caseId);
+      await fetchLiveDetail(json.caseId);
     } catch (err) {
-      setLastError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
+      setLiveError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  async function resolveApproval(approvalId: string, decision: "APPROVED" | "REJECTED"): Promise<void> {
-    setBusy(true);
+  async function resolveLiveApproval(decision: "APPROVED" | "REJECTED"): Promise<void> {
+    if (!cachedApproval) return;
+    setLiveResolvedDecision(decision);
     try {
-      await fetch(`/api/approvals/${approvalId}/resolve`, {
+      await fetch(`/api/approvals/${cachedApproval.id}/resolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, resolvedBy: "ops-controller@nexus" })
+        body: JSON.stringify({ decision, resolvedBy: "judge-demo" })
       });
-      await refresh();
+      if (liveCaseId) await fetchLiveDetail(liveCaseId);
     } catch (err) {
-      setLastError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
+      setLiveError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  const kpis = summary?.kpis;
-  const productionStatus =
-    (kpis?.deadlinesBreachedCount ?? 0) > 0
-      ? "BREACHED"
-      : (kpis?.ordersAtRiskCount ?? 0) > 0
-        ? "AT RISK"
-        : "PROTECTED";
+  // ---- Assemble the values every panel below actually reads ----
+  const displayCases: Case[] = isLive ? (liveDetail ? [liveDetail.case] : []) : staticCases;
+  const displayAgentState = isLive ? liveDetail?.agentState ?? null : staticAgentState;
+  const displayAuditEvents = isLive ? liveDetail?.auditEvents ?? [] : staticAuditEvents;
+  const displayPlanVersions = isLive ? liveDetail?.planVersions ?? [] : staticPlanVersions;
+  const displayActivePlanVersion = isLive ? liveDetail?.activePlanVersion ?? null : staticPlanVersions.find((v) => v.status === "ACTIVE")!;
+  const displayValidationResult = isLive ? liveDetail?.latestValidationResult ?? null : v2ValidationResult;
+  const displayApprovalRequest = isLive ? cachedApproval : staticApprovalRequest;
+  const displayApprovalDecision: ApprovalRequest["status"] | null = isLive
+    ? (liveDetail?.pendingApproval ? "PENDING" : liveResolvedDecision)
+    : staticApprovalDecision;
+  const displayRiskSignals = isLive ? liveDetail?.case.riskSignals ?? [] : staticRiskSignals;
+  const displayUnitsAtRisk = isLive ? liveDetail?.case.continuityImpact.unitsAtRisk ?? 0 : primaryCase.continuityImpact.unitsAtRisk;
+  const displayDeadlineBreached = isLive
+    ? liveDetail?.case.continuityImpact.deadlineBreached ?? false
+    : primaryCase.continuityImpact.deadlineBreached;
+
+  const kpis = isLive
+    ? {
+        coverageDaysRemaining: staticKpis.coverageDaysRemaining, // single-SKU simplification, same as the live /api/dashboard/summary route
+        ordersAtRiskCount: displayUnitsAtRisk > 0 ? 1 : 0,
+        unitsAtRisk: displayUnitsAtRisk,
+        deadlinesBreachedCount: displayDeadlineBreached ? 1 : 0,
+        emergencyBudgetRemaining: staticKpis.emergencyBudgetRemaining
+      }
+    : staticKpis;
+
+  const hasStory = isLive ? liveDetail !== null : selectedCaseId === primaryCase.id;
+  const showPlanAndApproval = isLive
+    ? displayActivePlanVersion !== null && displayValidationResult !== null
+    : hasStory;
+  const showApprovalPanel = isLive ? displayApprovalRequest !== null && displayApprovalDecision !== null : hasStory;
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-6 py-4">
-        <div>
-          <h1 className="text-lg font-semibold">NEXUS Mission Control</h1>
-          <p className="text-sm text-slate-400">Is production protected?</p>
-        </div>
-        <div className="flex flex-wrap gap-6 text-sm">
-          <Stat label="Production Status" value={productionStatus} />
-          <Stat label="Orders At Risk" value={String(kpis?.ordersAtRiskCount ?? 0)} />
-          <Stat label="Units At Risk" value={String(kpis?.unitsAtRisk ?? 0)} />
-          <Stat label="Deadlines Breached" value={String(kpis?.deadlinesBreachedCount ?? 0)} />
-          <Stat label="Emergency Budget Remaining" value={`₹${(kpis?.emergencyBudgetRemaining ?? 0).toLocaleString()}`} />
-        </div>
-        <button
-          onClick={triggerShipmentDelay}
-          disabled={busy}
-          className="rounded bg-orange-600 px-3 py-1.5 text-sm font-medium hover:bg-orange-500 disabled:opacity-50"
-        >
-          Judge Event: Shipment Delayed 24h
-        </button>
-      </header>
+      <DemoDataBanner live={isLive} />
 
-      {lastError && (
-        <div className="border-b border-red-900 bg-red-950 px-6 py-2 text-sm text-red-300">Error: {lastError}</div>
+      <div className="border-b border-slate-800">
+        <TopStatusBar
+          productionStatus={deriveProductionStatus(kpis.deadlinesBreachedCount, kpis.ordersAtRiskCount)}
+          coverageDaysRemaining={kpis.coverageDaysRemaining ?? 0}
+          ordersAtRiskCount={kpis.ordersAtRiskCount}
+          unitsAtRisk={kpis.unitsAtRisk}
+          deadlinesBreachedCount={kpis.deadlinesBreachedCount}
+          emergencyBudgetRemaining={kpis.emergencyBudgetRemaining}
+        />
+      </div>
+
+      {liveError && (
+        <div className="border-b border-red-900 bg-red-950/60 px-6 py-1.5 text-xs text-red-300">Error: {liveError}</div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 p-6 lg:grid-cols-3">
-        <section className="rounded border border-slate-800 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-slate-300">Cases</h2>
-          <ul className="space-y-2">
-            {(summary?.cases ?? []).map((c) => (
-              <li
-                key={c.id}
-                onClick={() => setSelectedCaseId(c.id)}
-                className={`cursor-pointer rounded border p-2 text-sm ${c.id === selectedCaseId ? "border-sky-600 bg-slate-900" : "border-slate-800"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-slate-400">{c.id.slice(0, 12)}</span>
-                  <StatusBadge status={c.status} />
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {c.priority} · units at risk {c.continuityImpact.unitsAtRisk} · v{c.activePlanVersion} · replans {c.replanCount}
-                </div>
-              </li>
-            ))}
-            {(!summary || summary.cases.length === 0) && (
-              <li className="text-sm text-slate-500">No active cases. Trigger the judge event above.</li>
+      <div className="mx-auto max-w-[2200px] px-6 py-6">
+        {/* LEVEL 1 — the demo story: active incident, agent state, recovery plan, approval boundary */}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-[280px_1fr_420px] md:gap-6">
+          <div className="space-y-5">
+            <CaseListPanel
+              cases={displayCases}
+              selectedCaseId={isLive ? liveCaseId : selectedCaseId}
+              onSelect={isLive ? () => {} : setSelectedCaseId}
+            />
+          </div>
+
+          <div className="space-y-5">
+            {hasStory ? (
+              <>
+                <RiskImpactSummary
+                  riskSignals={displayRiskSignals}
+                  unitsAtRisk={displayUnitsAtRisk}
+                  deadlineBreached={displayDeadlineBreached}
+                />
+                {displayAgentState && <LiveAgentTracePanel agentState={displayAgentState} auditEvents={displayAuditEvents} />}
+              </>
+            ) : (
+              <p className="rounded border border-slate-800 p-4 text-sm text-slate-500">
+                {isLive ? "Waiting for the first agent cycle…" : "Select the active case above."}
+              </p>
             )}
-          </ul>
-        </section>
+          </div>
 
-        <section className="rounded border border-slate-800 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-slate-300">Live Agent Trace</h2>
-          {detail?.agentState ? (
-            <div className="mb-3 text-sm">
-              <div>
-                Current step: <StatusBadge status={detail.agentState.currentStep} />
-              </div>
-              <div className="mt-1 text-xs text-slate-400">
-                cycle {detail.agentState.cycle} · toolCallCount {detail.agentState.toolCallCount}/12
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">Select a case to see its trace.</p>
-          )}
-          <ol className="max-h-96 space-y-1 overflow-y-auto text-xs">
-            {(detail?.auditEvents ?? [])
-              .slice()
-              .reverse()
-              .map((e) => (
-                <li key={e.id} className="border-b border-slate-900 py-1">
-                  <span className="text-slate-500">[{e.type}]</span> {e.summary}
-                </li>
-              ))}
-          </ol>
+          <div className="space-y-5">
+            {showPlanAndApproval && displayActivePlanVersion && displayValidationResult ? (
+              <RecoveryPlanPanel
+                activePlanVersion={displayActivePlanVersion}
+                validationResult={displayValidationResult}
+                comparison={(isLive ? liveDetail?.doNothingVsNexus : null) ?? staticDoNothingVsNexus}
+              />
+            ) : (
+              <p className="rounded border border-slate-800 p-4 text-sm text-slate-500">
+                {isLive ? "No recovery plan proposed yet." : "No plan for this case yet."}
+              </p>
+            )}
+            {showApprovalPanel && displayApprovalRequest && displayApprovalDecision && (
+              <ApprovalBoundaryPanel
+                approvalRequest={displayApprovalRequest}
+                decision={displayApprovalDecision}
+                onApprove={() => (isLive ? resolveLiveApproval("APPROVED") : setStaticApprovalDecision("APPROVED"))}
+                onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
+                onOpenModal={() => setModalOpen(true)}
+              />
+            )}
+          </div>
+        </div>
 
-          {detail?.pendingApproval && (
-            <div className="mt-4 rounded border border-amber-700 bg-amber-950 p-3 text-sm">
-              <p className="mb-2 font-semibold text-amber-300">Human approval required</p>
-              <p className="mb-3 text-xs text-amber-200">{detail.pendingApproval.brief}</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => resolveApproval(detail.pendingApproval!.id, "APPROVED")}
-                  disabled={busy}
-                  className="rounded bg-emerald-700 px-3 py-1 text-xs font-medium hover:bg-emerald-600 disabled:opacity-50"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => resolveApproval(detail.pendingApproval!.id, "REJECTED")}
-                  disabled={busy}
-                  className="rounded bg-red-700 px-3 py-1 text-xs font-medium hover:bg-red-600 disabled:opacity-50"
-                >
-                  Reject
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
+        {/* LEVEL 2 — supporting evidence: always the static reference fixture (see
+            file header — the live API doesn't expose a per-supplier eligibility
+            breakdown, and this SKU/inventory context doesn't change during the run) */}
+        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+          <InventoryCoveragePanel
+            inventory={inventoryRecord}
+            coverageDays={coverage.coverageDays}
+            safetyStockRatio={safetyStock.disabled ? null : safetyStock.ratio}
+            productionRequirement={productionRequirementQty}
+          />
+          <SupplierShipmentPanel
+            supplierEligibility={supplierEligibility}
+            purchaseOrders={isLive ? liveDetail?.purchaseOrders ?? [] : staticPurchaseOrders}
+            disruptedSupplierId="supplier-orbital"
+          />
+          <PlanVersionLineage versions={isLive ? displayPlanVersions : staticPlanVersions} />
+        </div>
 
-        <section className="rounded border border-slate-800 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-slate-300">Plan &amp; Validator</h2>
-          {detail?.activePlanVersion ? (
-            <div className="mb-3 text-sm">
-              <p className="text-xs text-slate-400">Plan v{detail.activePlanVersion.version}</p>
-              <ul className="mt-1 space-y-0.5 text-xs">
-                {detail.activePlanVersion.plan.allocations.map((a, i) => (
-                  <li key={i}>
-                    {a.qty} units from {a.supplierId} @ ₹{a.unitPrice}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-1 text-xs">Total cost: ₹{detail.activePlanVersion.plan.totalCost.toLocaleString()}</p>
-              {detail.activePlanVersion.reason_for_change !== "initial plan proposal" && (
-                <p className="mt-1 text-xs text-slate-400">Reason for change: {detail.activePlanVersion.reason_for_change}</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No plan proposed yet.</p>
-          )}
-
-          {detail?.latestValidationResult && (
-            <ul className="mb-4 space-y-1 text-xs">
-              {detail.latestValidationResult.checks.map((c) => (
-                <li key={c.name} className="flex items-center justify-between border-b border-slate-900 py-1">
-                  <span>{c.name}</span>
-                  <span className={c.passed ? "text-emerald-400" : "text-red-400"}>{c.passed ? "PASS" : "FAIL"}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {detail?.doNothingVsNexus && (
-            <div>
-              <h3 className="mb-1 text-xs font-semibold text-slate-300">Do-Nothing vs NEXUS Plan</h3>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-slate-400">
-                    <th className="text-left font-normal"></th>
-                    <th className="text-left font-normal">Do Nothing</th>
-                    <th className="text-left font-normal">NEXUS Plan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Deadline breached</td>
-                    <td>{detail.doNothingVsNexus.doNothing.deadlineBreached ? "Yes" : "No"}</td>
-                    <td>{detail.doNothingVsNexus.nexusPlan.deadlineBreached ? "Yes" : "No"}</td>
-                  </tr>
-                  <tr>
-                    <td>Units at risk</td>
-                    <td>{detail.doNothingVsNexus.doNothing.unitsAtRisk}</td>
-                    <td>{detail.doNothingVsNexus.nexusPlan.unitsAtRisk}</td>
-                  </tr>
-                  <tr>
-                    <td>Cost impact</td>
-                    <td>₹{detail.doNothingVsNexus.doNothing.costImpact.toLocaleString()}</td>
-                    <td>₹{detail.doNothingVsNexus.nexusPlan.costImpact.toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        {/* LEVEL 3 — audit/debug: quietest, never competes with the story above */}
+        <div className="mt-8 border-t border-slate-900 pt-6">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_260px]">
+            <AuditTimeline auditEvents={displayAuditEvents} />
+            <JudgeControlStrip onTriggerShipmentDelay={triggerShipmentDelay} disabled={isLive} />
+          </div>
+        </div>
       </div>
-    </main>
-  );
-}
 
-function Stat({ label, value }: { label: string; value: string }): React.ReactElement {
-  return (
-    <div>
-      <div className="text-slate-500">{label}</div>
-      <div className="font-mono text-slate-100">{value}</div>
-    </div>
+      {showApprovalPanel && displayApprovalRequest && (
+        <EscalationModal
+          open={modalOpen && displayApprovalDecision === "PENDING"}
+          approvalRequest={displayApprovalRequest}
+          onApprove={() => (isLive ? resolveLiveApproval("APPROVED") : setStaticApprovalDecision("APPROVED"))}
+          onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
+          onDismiss={() => setModalOpen(false)}
+        />
+      )}
+    </main>
   );
 }

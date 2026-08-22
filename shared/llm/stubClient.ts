@@ -9,6 +9,22 @@ export class StubLlmClient implements LlmClient {
   async proposeRecoveryPlan(req: PlanProposalRequest): Promise<ProposedPlan> {
     const sorted = [...req.eligibleSuppliers].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
 
+    // First proposal only (no rejection feedback yet): deliberately undershoot so
+    // the golden-path demo can show a genuine VALIDATE failure -> ADAPT_REPLAN ->
+    // corrected V2 (PRD §23/Figure 3), instead of always getting it right first
+    // try. Falls through to the full-coverage logic below on any replan attempt,
+    // or if undershooting isn't possible without violating MOQ.
+    if (!req.previousPlanRejectionReason) {
+      const cheapest = sorted[0];
+      const partialQty = cheapest ? Math.floor(req.shortageQty * 0.65) : 0;
+      if (cheapest && partialQty >= cheapest.moq && partialQty < req.shortageQty) {
+        return {
+          allocations: [{ supplierId: cheapest.supplierId, qty: partialQty }],
+          rationale: `[local test double] Initial reroute to ${cheapest.name}: ${partialQty}-unit partial allocation (lowest-price eligible supplier).`
+        };
+      }
+    }
+
     const single = sorted.find(
       (s) => s.maxCapacityPerCycle >= req.shortageQty && req.shortageQty >= s.moq
     );

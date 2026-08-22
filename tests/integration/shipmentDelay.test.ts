@@ -71,8 +71,14 @@ describe("Shipment Delay 24h vertical slice", () => {
     expect(types).toContain("VALIDATION");
     expect(types).toContain("LLM_CALL");
 
-    const validationEvent = auditEvents.find((e) => e.type === "VALIDATION");
-    expect(validationEvent?.detail.overallPassed).toBe(true);
+    // The stub LLM deliberately undershoots on its first proposal (see
+    // shared/llm/stubClient.ts) so the golden-path demo genuinely exercises
+    // ADAPT_REPLAN: V1 must fail validation, and only the corrected V2 passes.
+    const validationEvents = auditEvents.filter((e) => e.type === "VALIDATION");
+    expect(validationEvents.length).toBeGreaterThanOrEqual(2);
+    expect(validationEvents[0].detail.overallPassed).toBe(false);
+    expect(validationEvents[validationEvents.length - 1].detail.overallPassed).toBe(true);
+    expect(escalated.replanCount).toBe(1);
   });
 
   it("resolves via human approval, executes, verifies outcome, and reaches GOAL_ACHIEVED", async () => {

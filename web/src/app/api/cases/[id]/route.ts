@@ -20,9 +20,10 @@ export async function GET(
     return Response.json({ error: `Case ${id} not found` }, { status: 404 });
   }
 
-  const [agentState, activePlanVersion, auditEvents, pendingApproval, purchaseOrders] = await Promise.all([
+  const [agentState, activePlanVersion, planVersions, auditEvents, pendingApproval, purchaseOrders] = await Promise.all([
     store.getAgentState(id),
     store.getActivePlanVersion(id),
+    store.listPlanVersions(id),
     store.listAuditEvents(id),
     store.getPendingApprovalForCase(id),
     store.listPurchaseOrdersByCase(id)
@@ -39,6 +40,7 @@ export async function GET(
     case: caseRecord,
     agentState,
     activePlanVersion,
+    planVersions,
     latestValidationResult,
     pendingApproval,
     purchaseOrders,
