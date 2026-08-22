@@ -9,7 +9,7 @@ export function ActiveCasesList({ cases }: { cases: Case[] }) {
     return (
       <Card>
         <CardHeader title="Active Cases" />
-        <div className="py-8 text-center text-gray-500 font-mono">
+        <div className="py-12 text-center text-muted-foreground font-mono">
           No active cases detected. Operational status normal.
         </div>
       </Card>
@@ -19,28 +19,29 @@ export function ActiveCasesList({ cases }: { cases: Case[] }) {
   return (
     <Card>
       <CardHeader title="Active Cases" subtitle="Live Case Tracking" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-gray-400">
-          <thead className="text-xs uppercase bg-gray-900 text-gray-500 border-b border-gray-800">
+      <div className="overflow-x-auto mt-4">
+        <table className="w-full text-left text-sm text-muted-foreground border-collapse">
+          <thead className="text-[10px] uppercase bg-muted/30 text-muted-foreground">
             <tr>
-              <th scope="col" className="px-4 py-3 font-mono">Case ID</th>
-              <th scope="col" className="px-4 py-3 font-mono">Order Ref</th>
-              <th scope="col" className="px-4 py-3 font-mono">Priority</th>
-              <th scope="col" className="px-4 py-3 font-mono">Status</th>
-              <th scope="col" className="px-4 py-3 font-mono text-right">Action</th>
+              <th scope="col" className="px-6 py-4 tracking-widest font-bold rounded-l-md">Case ID</th>
+              <th scope="col" className="px-6 py-4 tracking-widest font-bold">Order Ref</th>
+              <th scope="col" className="px-6 py-4 tracking-widest font-bold">Priority</th>
+              <th scope="col" className="px-6 py-4 tracking-widest font-bold">Status</th>
+              <th scope="col" className="px-6 py-4 tracking-widest font-bold text-right rounded-r-md">Action</th>
             </tr>
           </thead>
-          <tbody>
-            {cases.map((c) => (
-              <tr key={c.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                <td className="px-4 py-3 font-mono font-medium text-gray-300">{c.id}</td>
-                <td className="px-4 py-3 font-mono">{c.productionOrderId}</td>
-                <td className="px-4 py-3">
+          <tbody className="space-y-2">
+            <tr className="h-2"></tr>
+            {cases.map((c, i) => (
+              <tr key={c.id} className={group hover:bg-primary/5 transition-colors \}>
+                <td className="px-6 py-4 font-mono font-medium text-foreground">{c.id}</td>
+                <td className="px-6 py-4 font-mono text-muted-foreground group-hover:text-foreground transition-colors">{c.productionOrderId}</td>
+                <td className="px-6 py-4">
                   <Badge variant={c.priority === 'CRITICAL' ? 'critical' : 'default'}>
                     {c.priority}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-6 py-4">
                   <Badge variant={
                     c.status === 'GOAL_ACHIEVED' ? 'success' :
                     c.status === 'HUMAN_ESCALATED_AWAITING_DECISION' ? 'warning' : 'default'
@@ -48,8 +49,8 @@ export function ActiveCasesList({ cases }: { cases: Case[] }) {
                     {c.status.replace(/_/g, ' ')}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/cases/${c.id}`} className="text-blue-400 hover:text-blue-300 font-mono text-xs uppercase tracking-wider">
+                <td className="px-6 py-4 text-right">
+                  <Link href={/cases/\} className="text-primary hover:text-primary-foreground hover:bg-primary px-4 py-2 rounded-md transition-all font-bold text-[10px] uppercase tracking-widest">
                     Inspect &rarr;
                   </Link>
                 </td>
