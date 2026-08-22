@@ -1,7 +1,7 @@
 # NEXUS — Autonomous Supply Continuity Control Agent
 ## Implementation-Grade PRD / SRS
 **Team NEXUS — Hackers Occupied Pune 2026, Final Round (Agentic AI Track)**
-Build window: 22 Aug 2026 14:00 → 23 Aug 2026 09:00 (19 hours) · Version: **LOCKED-1.1 (FINAL)**
+Build window: 22 Aug 2026 14:00 → 23 Aug 2026 09:00 (19 hours) · Version: **LOCKED-1.2 (FINAL)**
 
 **Changelog v1.0 → v1.1:** (1) added deterministic per-Case tool-call budget, `maxToolCallsPerCase = 12` (§13a); (2) added original-supplier partial-shipment support via a minimal `allocations` field, no new subsystem (§26); (3) renamed `HUMAN_ESCALATED` → `HUMAN_ESCALATED_AWAITING_DECISION` and corrected it to a non-terminal awaiting-human state (§3, §24); (4) `safety_stock_risk` now uses `usableStock`, matching the rest of the system (§19); (5) `required_minimum_coverage` given an exact deterministic definition, no longer left to developer interpretation (§19, §16.1). No architecture, stack, or product-strategy change.
 
@@ -17,7 +17,7 @@ Before drafting, the locked design was checked against the locked Problem Statem
 
 NEXUS is a single-agent, tool-using operations controller that protects production continuity when a simulated supply chain is disrupted. It does not chat, and it does not merely display a dashboard: it watches operational signals, decides when a signal is worth investigating, verifies before acting, proposes the smallest safe recovery plan, runs that plan through a deterministic validator before anything executes, executes only what passes, re-reads the world to confirm the action actually worked, and replans statefully (V1 → V2 → …) when it didn't. Humans are looped in only where policy requires approval or where no feasible machine recovery exists. Every step is written to an audit trail sufficient to reconstruct *why* NEXUS did what it did.
 
-The system is built once, correctly, on a locked stack (Next.js/TypeScript/Tailwind, Firebase Auth, Firestore, Cloud Functions, Vercel, direct Claude API with Haiku/Sonnet routing) with no LangChain, no multi-agent framework, no RAG, no ML forecasting, no MIP solver. The reasoning/judgment surface is the LLM; every number that could sink the company is deterministic code.
+The system is built once, correctly, on a locked stack (Next.js/TypeScript/Tailwind, Firebase Authentication, PostgreSQL on Neon via Prisma, Vercel-hosted Next.js API Routes, direct Anthropic Claude API with Haiku/Sonnet routing) with no LangChain, no multi-agent framework, no RAG, no ML forecasting, no MIP solver. The reasoning/judgment surface is the LLM; every number that could sink the company is deterministic code.
 
 ## 2. Official Problem Statement Interpretation
 
@@ -80,25 +80,25 @@ Purpose: Show the judge the full request/control path from browser to simulated 
 ```mermaid
 flowchart LR
     Browser["Browser<br/>(Next.js/TS/Tailwind —<br/>Mission Control UI)"]
-    API["Vercel Edge / Cloud Functions<br/>(API layer:<br/>/api/agent/tick, /api/agent/event,<br/>/api/approvals)"]
-    Core["NEXUS Agent Core<br/>(state machine + orchestrator,<br/>runs inside Cloud Functions)"]
+    API["Vercel<br/>(Next.js API Routes:<br/>/api/agent/tick, /api/agent/event,<br/>/api/approvals)"]
+    Core["NEXUS Agent Core<br/>(state machine + orchestrator,<br/>runs inside Next.js API Routes)"]
 
     subgraph Ext["External network boundary"]
         Claude["Claude API<br/>(Haiku: extraction/classification;<br/>Sonnet: reasoning/drafting/trade-offs)"]
     end
 
     Tools["Deterministic Validator + Tool Layer<br/>(pure functions: coverage, cost,<br/>eligibility, threshold checks;<br/>simulated tool executors)"]
-    Firestore["Firestore<br/>(Case, AgentState, InventoryRecord,<br/>PurchaseOrder, Supplier, AuditEvent)<br/>= Simulated World"]
+    Database["PostgreSQL on Neon via Prisma<br/>(Case, AgentState, InventoryRecord,<br/>PurchaseOrder, Supplier, AuditEvent)<br/>= Simulated World"]
 
     Browser -->|"user/judge action or poll"| API
     API -->|"invoke agent tick"| Core
     Core <-->|"LLM call (judgment only)"| Claude
     Core <-->|"tool call (ground truth)"| Tools
-    Tools <-->|"read/write simulated state"| Firestore
-    Core -.->|"audit write (every step)"| Firestore
-    Firestore -.->|"live Firestore listener"| Browser
+    Tools <-->|"read/write simulated state"| Database
+    Core -.->|"audit write (every step)"| Database
+    Browser -.->|"poll every 3–5 seconds"| API
 
-    Tools -.->|"HUMAN APPROVAL BOUNDARY:<br/>purchases over threshold or<br/>policy-flagged actions cannot<br/>cross without ApprovalRequest = APPROVED"| Firestore
+    Tools -.->|"HUMAN APPROVAL BOUNDARY:<br/>purchases over threshold or<br/>policy-flagged actions cannot<br/>cross without ApprovalRequest = APPROVED"| Database
 
     style Tools fill:#fff,stroke:#c00,stroke-width:2px
     linkStyle 7 stroke:#c00,stroke-width:2px,stroke-dasharray:5 5
@@ -106,7 +106,7 @@ flowchart LR
 
 ## 9. Agent Architecture
 
-NEXUS is a **single agent**, implemented as an explicit finite-state loop (not a free-running "agent thinks until done" loop) driven from Cloud Functions. There is no agent-to-agent messaging. The LLM is invoked as a *stateless function call* at specific states only — it receives the current Case + AgentState + relevant tool results as context and returns either (a) a classification/extraction, (b) a proposed plan/action, or (c) drafted communication text. It never has direct write access to Firestore or to any tool; every LLM output is parsed and passed through the Deterministic Validator before it can change state.
+NEXUS is a **single agent**, implemented as an explicit finite-state loop (not a free-running "agent thinks until done" loop) driven from Next.js API Routes. There is no agent-to-agent messaging. The LLM is invoked as a *stateless function call* at specific states only — it receives the current Case + AgentState + relevant tool results as context and returns either (a) a classification/extraction, (b) a proposed plan/action, or (c) drafted communication text. It never has direct write access to PostgreSQL or to any tool; every LLM output is parsed and passed through the Deterministic Validator before it can change state.
 
 Two models, routed by task:
 - **Claude Haiku** — supplier-message classification (contradiction detection, sentiment/urgency extraction), simple field extraction from RFQ replies, cheap repeated polling classification.
@@ -230,7 +230,7 @@ Per PS §6 ("Tool calls may be limited"): every Case tracks `AgentState.toolCall
 
 ## 14. Tool Contracts
 
-All tools are pure, typed functions (simulated executors over Firestore/simulation fixtures). Contract shape is identical for every tool:
+All tools are pure, typed functions (simulated executors over PostgreSQL/simulation fixtures). Contract shape is identical for every tool:
 
 ```typescript
 interface ToolCall<TInput> {
@@ -428,13 +428,13 @@ States: `OPEN → MONITORING → EARLY_RISK_CHECK → VERIFY → PLAN → VALIDA
 - `HUMAN_ESCALATED_AWAITING_DECISION`: **not terminal.** An awaiting-human state. `APPROVED` → returns to the controlled execution path (`EXECUTE_OR_ESCALATE` → execute → `VERIFY_OUTCOME`). `REJECTED` → routes to `ADAPT_REPLAN` (if a replan is still viable) or `NO_FEASIBLE_RECOVERY` (if not).
 - `NO_FEASIBLE_RECOVERY`: no candidate plan passes VALIDATE after the bounded replanning attempts (default cap: 3 replans), or all eligible suppliers are exhausted. NEXUS never forces an invalid plan through — it produces a **decision brief** (constraints hit, suppliers tried and why each failed, closest-miss plan, recommended human next step) and stops there.
 
-**Simultaneous disruptions (Hidden Test 13):** each new disruption event opens or attaches to a Case; Cases are ranked by `continuity_impact.unitsAtRisk` (ties broken by `deadline_risk` slack, most urgent first). The agent processes exactly one Case through the full loop per Cloud Function invocation cycle at a time; others sit `QUEUED` and are visibly ordered in Mission Control so the judge can see the queue, not just a spinner.
+**Simultaneous disruptions (Hidden Test 13):** each new disruption event opens or attaches to a Case; Cases are ranked by `continuity_impact.unitsAtRisk` (ties broken by `deadline_risk` slack, most urgent first). The agent processes exactly one Case through the full loop per Next.js API route invocation cycle at a time; others sit `QUEUED` and are visibly ordered in Mission Control so the judge can see the queue, not just a spinner.
 
 ## 25. Audit Trail
 
-Every state transition, every tool call (with input/output/status), every LLM invocation (prompt summary + output summary, not full raw prompt to keep Firestore light), every validator run, and every human action is appended as an immutable `AuditEvent` (Firestore, append-only collection, never updated/deleted). The audit trail is the single source the Mission Control "timeline" view renders from — nothing shown in the UI is allowed to exist without a corresponding AuditEvent, ensuring the explainability rubric line is provably satisfied, not just claimed.
+Every state transition, every tool call (with input/output/status), every LLM invocation (prompt summary + output summary, not full raw prompt), every validator run, and every human action is appended as an immutable `AuditEvent` (PostgreSQL, append-only table, never updated/deleted). The audit trail is the single source the Mission Control "timeline" view renders from — nothing shown in the UI is allowed to exist without a corresponding AuditEvent, ensuring the explainability rubric line is provably satisfied, not just claimed.
 
-## 26. Firestore Data Model
+## 26. PostgreSQL Data Model
 
 ```typescript
 interface Case {
@@ -596,7 +596,7 @@ interface RiskSignal {
 
 ## 26a. Sandbox Field Mapping / Data Ingestion Layer
 
-The organizer's sandbox (PS §5) uses snake_case field names (`component_id`, `po_id`, `supplier_id`, `production_order_id`, `available_quantity`, `quality_score`, `approval_required_above`, etc.). NEXUS's internal Firestore model (§26) is camelCase and uses `sku`/`id` in place of `component_id`/`po_id`. A single, explicit ingestion adapter — not scattered ad hoc renaming — sits at the boundary where sandbox data is first read:
+The organizer's sandbox (PS §5) uses snake_case field names (`component_id`, `po_id`, `supplier_id`, `production_order_id`, `available_quantity`, `quality_score`, `approval_required_above`, etc.). NEXUS's internal Prisma model (§26) is camelCase and uses `sku`/`id` in place of `component_id`/`po_id`. A single, explicit ingestion adapter — not scattered ad hoc renaming — sits at the boundary where sandbox data is first read:
 
 ```typescript
 // One mapping module, called at seed time and at every raw sandbox read.
@@ -617,7 +617,7 @@ function mapInventoryRecord(raw: SandboxInventory): InventoryRecord {
 
 This is a MUST-BUILD item (add to §39) — without it, every downstream formula (§19) silently operates on `undefined` fields the moment real sandbox data is loaded instead of hand-written fixtures.
 
-## 27. Cloud Functions / Backend APIs
+## 27. Next.js API Routes / Backend APIs
 
 **FIGURE 5 — Data / Tool Flow** (`fig5_data_tool_flow`)
 
@@ -629,7 +629,7 @@ flowchart TD
     Pred{"State Predicates<br/>(§13 legality table + §13a<br/>toolCallCount < 12 budget)"}
     Tools["Permitted Typed Tool<br/>(e.g. inventory_lookup,<br/>rfq_request, approval_check,<br/>erp_update — per §14)"]
     Result{"ToolResult.status"}
-    Update["Updated State<br/>(Case / Firestore collection:<br/>RiskSignal, SupplierMessage, RFQ,<br/>RecoveryPlanVersion, ValidationResult,<br/>PurchaseOrder/ProductionOrder patch)"]
+    Update["Updated State<br/>(Case / PostgreSQL tables via Prisma:<br/>RiskSignal, SupplierMessage, RFQ,<br/>RecoveryPlanVersion, ValidationResult,<br/>PurchaseOrder/ProductionOrder patch)"]
     Audit["AuditEvent<br/>(append-only, every call)"]
 
     AS --> Pred
@@ -646,8 +646,8 @@ flowchart TD
 
 At `VALIDATE`, the outcome of the Validator (itself a deterministic "tool" in this flow) branches the FSM to `EXECUTE_OR_ESCALATE` (pass) or back to `PLAN` (fail, re-propose) — see Figure 2.
 
-REST-style endpoints (Cloud Functions, callable or HTTPS):
-- `POST /api/agent/tick` — cron-invoked (Cloud Scheduler, e.g. every 20–30s during demo) or manually invoked; advances all `OPEN`/in-progress Cases one step.
+REST-style endpoints (Next.js API Routes on Vercel):
+- `POST /api/agent/tick` — invoked by Vercel Cron (e.g. every 20–30s during demo) or manually; advances all `OPEN`/in-progress Cases one step.
 - `POST /api/agent/event` — judge-triggered disruption injector; body: `{ type: 'SUPPLIER_CAPACITY_DROP' | 'SHIPMENT_DELAY' | 'DEMAND_SPIKE', payload }`; creates/attaches to a Case and immediately runs one tick.
 - `GET /api/cases/:id` — full Case + latest AgentState + active RecoveryPlanVersion + AuditEvents (paginated).
 - `POST /api/approvals/:id/resolve` — human approve/reject; body `{ decision, resolvedBy }`; writes `ApprovalRequest` + `AuditEvent(actor: HUMAN)`.
@@ -659,7 +659,7 @@ Auth: Firebase Authentication, single role sufficient for the hackathon (`OPS_CO
 
 Primary visual story: **"Is production protected?"** — never a generic analytics dashboard.
 
-Layout (single-page, real-time via Firestore listeners):
+Layout (single-page, refreshed by API polling every 3–5 seconds):
 - **Top status bar** (always visible): Current Goal, Coverage Remaining, Production Status (protected/at-risk/breached), Current Risk level.
 - **Left panel — Case list**: Orders at Risk, Deadline Risk, sorted by continuity impact; `QUEUED` cases visibly stacked below the active one.
 - **Center panel — Live agent trace**: current operational step (highlighted node from Figure 2's state machine, rendered live), active tool calls streaming in with SUCCESS/FAILURE/NO_DATA badges.
@@ -697,7 +697,7 @@ Each event is followed by an immediate agent tick so the judge sees the reaction
 
 **Reactive demo (main, ~3–4 minutes):** judge selects one of the three live events (§31) → Case opens → VERIFY (independent tool confirms) → PLAN (Sonnet proposes, possibly a split order) → VALIDATE (checklist shown passing/failing live) → EXECUTE_OR_ESCALATE (either auto-executes or, if scripted to exceed threshold, escalates to the human panel member for a live Approve click) → VERIFY_OUTCOME → if a second judge-triggered event lands mid-flight (encouraged), show a live V1→V2 replan with the diff panel → terminal state reached, Do-Nothing vs NEXUS comparison shown, audit timeline scrolled to prove the whole chain.
 
-Both demos draw from the same live Firestore state; nothing is a separate pre-recorded path. If the judge picks an unscripted combination, the deterministic validator and state machine still hold — only the *specific numbers* are unrehearsed, not the *behavior*.
+Both demos draw from the same live PostgreSQL state; nothing is a separate pre-recorded path. If the judge picks an unscripted combination, the deterministic validator and state machine still hold — only the *specific numbers* are unrehearsed, not the *behavior*.
 
 ## 33. Hidden Test Matrix
 
@@ -737,59 +737,56 @@ Documented deviations require: exact problem, impact, smallest safe modification
 | Failure Mode | Impact | Smallest Safe Modification |
 |---|---|---|
 | Claude API latency/rate-limit during live demo | Agent tick stalls, judge sees a stuck UI | Cache last-known-good state; show "reasoning..." spinner with timeout → fallback to previous cycle's plan; never block the whole UI on one LLM call |
-| Firestore listener flakiness | UI doesn't update live | Poll fallback every 5s in addition to listener |
+| API polling delay | UI is briefly stale | Poll the case and dashboard endpoints every 3–5s; judge-triggered events request an immediate refresh |
 | Judge triggers an event NEXUS has no seeded data path for | Agent produces `NO_DATA` cascade | Pre-validate all three judge events against current seed data at demo start; reseed if needed before judging opens |
 | LLM proposes a plan validator can't parse (schema drift) | Silent stall | Strict Zod/JSON-schema parse on every LLM output; parse failure = automatic one re-prompt with the schema error, then fallback to `NO_VALID_PLAN_PROPOSED` |
 | Team runs out of time for split-order logic | Feature gap vs PS | Cut per §41 (SKIP), single-supplier plans only; does not violate PS since split was explicitly "in scope," not "required minimum" |
 
 ## 35. Security / Environment Variables / Secrets
 
-- `ANTHROPIC_API_KEY` — Cloud Functions runtime env var only, never exposed to the Next.js client bundle, never logged in AuditEvent detail.
-- `FIREBASE_SERVICE_ACCOUNT_KEY` (JSON) — Cloud Functions only, stored as a Vercel/Firebase secret, not committed to the repo.
+- `ANTHROPIC_API_KEY` — Next.js server runtime env var only, never exposed to the client bundle, never logged in AuditEvent detail.
+- `FIREBASE_SERVICE_ACCOUNT_KEY` (JSON) — server-side Firebase Authentication verification only, stored as a Vercel secret, not committed to the repo.
 - `NEXT_PUBLIC_FIREBASE_CONFIG` — client-safe Firebase web config (not secret by design, but scoped to this project).
 - `.env.local` (dev) / Vercel Project Environment Variables (prod) — no secrets in `.env.example` beyond variable names.
-- Firestore Security Rules: writes to `Case`, `AgentState`, `AuditEvent`, `RecoveryPlanVersion` restricted to Cloud Functions (Admin SDK) only; client has read-only access via authenticated session; `ApprovalRequest` resolution restricted to `OPS_CONTROLLER` role.
+- PostgreSQL writes are server-side through Prisma; client access is through authenticated Next.js API Routes; `ApprovalRequest` resolution is restricted to `OPS_CONTROLLER` role.
 - No PII in the simulation; supplier data is fictional/seeded.
 
 ## 36. Deployment Architecture
 
 **FIGURE 4 — Deployment Architecture** (`fig4_deployment_architecture`)
 
-Purpose: show exact hosting/runtime boundaries so a developer knows where each piece of code actually runs. The API key and all ground-truth state never touch the browser; the only thing the browser directly talks to for data is Firestore (read-only, via SDK/listeners) and Vercel-hosted API routes for actions.
+Purpose: show exact hosting/runtime boundaries so a developer knows where each piece of code actually runs. The API key and all ground-truth state never touch the browser; the browser talks to Vercel-hosted Next.js API Routes for reads and actions.
 
 ```mermaid
 flowchart LR
     subgraph Internet["Internet"]
         subgraph VercelBox["Vercel"]
             NextApp["Next.js App<br/>(Mission Control UI, SSR/CSR)"]
+          API["Next.js API Routes<br/>(Agent Core, Validator, Tool Layer)"]
         end
 
-        subgraph FirebaseBox["Firebase Project<br/>(Firebase-managed runtime)"]
-            Auth["Firebase Authentication"]
-            CF["Cloud Functions<br/>(Agent Core, Validator,<br/>Tool Layer, API routes)"]
-            FS["Firestore<br/>(Case/AgentState/.../AuditEvent<br/>collections)"]
-        end
+        Auth["Firebase Authentication"]
+        DB["Neon PostgreSQL<br/>(Case/AgentState/.../AuditEvent<br/>tables via Prisma)"]
 
         subgraph AnthropicBox["Anthropic API<br/>(third-party, outbound only)"]
             Claude["Claude API<br/>(Haiku + Sonnet)"]
         end
 
-        Scheduler["Cloud Scheduler"]
+        Scheduler["Vercel Cron"]
     end
 
-    NextApp -->|"HTTPS (API calls,<br/>Firebase Admin SDK auth)"| CF
-    CF -->|"Admin SDK read/write"| FS
-    CF -->|"HTTPS, server-side only,<br/>API key never leaves this box"| Claude
-    Scheduler -->|"cron trigger, agent tick"| CF
-    NextApp -.->|"read-only via SDK listeners"| FS
-    CF -.-> Auth
+    NextApp -->|"HTTPS API calls"| API
+    API -->|"Prisma read/write"| DB
+    API -->|"HTTPS, server-side only,<br/>API key never leaves this box"| Claude
+    Scheduler -->|"Vercel cron, agent tick"| API
+    NextApp -.-> Auth
 ```
 
 ## 37. Testing Strategy
 
 - **Unit tests** (highest priority, deterministic code): every formula in §19, the full Validator checklist (§16), split-allocation logic (§18), threshold trigger logic (§11). These are fast, offline, and directly protect the 35%+20% rubric weight tied to correctness of numbers.
 - **Contract tests**: every tool's `ToolResult` shape, including forced `FAILURE`/`NO_DATA` simulation modes for each tool (a `?simulateFailure=true` fixture flag).
-- **Scenario tests**: run each of the 14 Hidden Test Matrix rows as a scripted integration test against seeded Firestore emulator data, asserting the Case reaches the expected terminal/interim state.
+- **Scenario tests**: run each of the 14 Hidden Test Matrix rows as a scripted integration test against seeded PostgreSQL data, asserting the Case reaches the expected terminal/interim state.
 - **LLM output tests**: schema-validate Sonnet/Haiku outputs against Zod schemas with a handful of recorded example responses; do not unit-test LLM *content*, only that it round-trips through the parser and validator correctly, and that invalid/malformed responses are correctly rejected.
 - **Manual demo rehearsal**: full run-through of both demo flows (§32) at least twice before 07:00, including at least one deliberately "wrong" judge event to confirm graceful handling.
 
@@ -845,7 +842,7 @@ A Case is considered **correctly implemented** only if all of the following hold
 
 | Hours (from 14:00 Day 1) | Focus |
 |---|---|
-| 0–2 (14:00–16:00) | Firestore schema (§26) finalized + seeded fixture data; Cloud Functions project scaffolded; Next.js scaffolded with Tailwind |
+| 0–2 (14:00–16:00) | Prisma schema (§26) finalized + seeded fixture data; Next.js API Routes scaffolded with Tailwind |
 | 2–5 (16:00–19:00) | Deterministic formulas (§19) + Validator (§16) unit-tested in isolation, no agent loop yet — this is the highest-leverage, lowest-risk block, done before Mentoring Round 1 (18:00–19:30) so it can be shown early |
 | 5–8 (19:00–22:00) | Agent state machine (§10) wired with stub/mocked LLM calls first, then real Claude Haiku/Sonnet calls; tool layer + predicates (§13–14) |
 | 8–10 (22:00–00:00) | Escalation/approval flow (§21) + audit trail (§25–26); prep for Mentoring Round 2 (23:00–00:00) with a working VERIFY→VALIDATE→EXECUTE slice |
@@ -857,8 +854,8 @@ A Case is considered **correctly implemented** only if all of the following hold
 
 ## 43. Team Task Allocation
 
-- **Team Lead**: architecture integrity, agent state machine (§10), Claude API integration/model routing (§9), Cloud Functions orchestration, mentoring conversations, final pitch.
-- **Member 2 (Backend/rule-engine)**: deterministic formulas (§19), Validator (§16), tool contracts + failure semantics (§14–15), split-order logic (§18), Firestore schema implementation (§26).
+- **Team Lead**: architecture integrity, agent state machine (§10), Claude API integration/model routing (§9), Next.js API Route orchestration, mentoring conversations, final pitch.
+- **Member 2 (Backend/rule-engine)**: deterministic formulas (§19), Validator (§16), tool contracts + failure semantics (§14–15), split-order logic (§18), Prisma schema implementation (§26).
 - **Member 3 (Frontend)**: Mission Control (§28), live agent trace visualization tied to Figure 2 states, Do-Nothing vs NEXUS panel (§30), V1→V2 diff view (Figure 3), audit timeline.
 - **Member 4 (Presentation/pitch)**: PPT deck built around Figures 1–6 and §30's comparison, mentoring-round talking points (§44), judge demo script (§32) rehearsal partner, decision-brief copy review (§24).
 - **Content Creator**: separate Creator Challenge deliverable, out of this PRD's scope, but should reuse Figures 1–2 and the product statement (§1) for consistency.
@@ -903,8 +900,8 @@ A Case is considered **correctly implemented** only if all of the following hold
 **Highest-risk implementation areas (in order):**
 1. **The agent state machine + LLM plan-parsing loop.** Getting Sonnet's plan proposals to reliably parse into a strict schema, every time, under demo pressure, is the single biggest risk. Mitigate with strict JSON-schema prompting, Zod validation, and a bounded re-prompt-on-parse-failure path (§15) built early, not bolted on at hour 15.
 2. **V1→V2 replanning correctness.** It's conceptually simple but easy to get subtly wrong (e.g., re-validating carried-forward allocations incorrectly). Build and unit-test this in isolation before wiring it into the live loop.
-3. **Live judge-event → live UI reaction latency.** If Cloud Scheduler cron cadence is too slow, the "live" demo will feel canned. Fix: judge events call `/api/agent/event` which triggers an immediate synchronous tick, not a wait-for-next-cron-cycle.
-4. **Firestore listener reliability under demo network conditions** (offline mode note: original doc says "Mode: Offline" for the event — confirm venue network for Firestore/Anthropic API reachability well before 14:00; this is an infrastructure blocker check per Section 2, not an architecture change).
+3. **Live judge-event → live UI reaction latency.** If Vercel Cron cadence is too slow, the "live" demo will feel canned. Fix: judge events call `/api/agent/event` which triggers an immediate synchronous tick, not a wait-for-next-cron-cycle.
+4. **API polling reliability under demo network conditions** (confirm venue network for Vercel, Neon, Firebase Authentication, and Anthropic API reachability well before 14:00; this is an infrastructure blocker check per Section 2, not an architecture change).
 
 **Features to cut first if behind schedule (in cut order):**
 1. Third judge-selectable event (keep 2 of 3 working perfectly over 3 working poorly)

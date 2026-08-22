@@ -1,1 +1,9 @@
-// TODO: Add the PRD ProductionOrder interface from Section 26.
+export interface ProductionOrder {
+	id: string;
+	sku: string;
+	plannedQty: number;
+	bomQtyPerUnit: number;
+	deadlineDate: string;
+	priority: 'STANDARD' | 'CRITICAL';
+	status: string;
+}

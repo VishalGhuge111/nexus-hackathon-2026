@@ -1,1 +1,8 @@
-// TODO: Add the PRD ToolCall and ToolResult interfaces from Sections 14 and 26.
+export interface ToolResult<T = unknown> {
+	toolName: string;
+	status: 'SUCCESS' | 'FAILURE' | 'NO_DATA';
+	data?: T;
+	errorReason?: string;
+	staleness?: 'FRESH' | 'STALE';
+	latencyMs: number;
+}

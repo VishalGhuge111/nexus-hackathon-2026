@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CaseStatus {
+  OPEN
+  MONITORING
+  EARLY_RISK_CHECK
+  VERIFY
+  PLAN
+  VALIDATE
+  EXECUTE_OR_ESCALATE
+  VERIFY_OUTCOME
+  ADAPT_REPLAN
+  QUEUED
+  GOAL_ACHIEVED
+  HUMAN_ESCALATED_AWAITING_DECISION
+  NO_FEASIBLE_RECOVERY
+}
+
+enum Priority {
+  STANDARD
+  CRITICAL
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  DELAYED
+  FULFILLED
+  CANCELLED
+}
+
+enum Direction {
+  OUTBOUND
+  INBOUND
+}
+
+enum RfqStatus {
+  OPEN
+  CLOSED
+}
+
+enum PlanVersionStatus {
+  ACTIVE
+  SUPERSEDED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuditActor {
+  AGENT
+  HUMAN
+  SYSTEM
+}
+
+enum AuditType {
+  STATE_TRANSITION
+  TOOL_CALL
+  LLM_CALL
+  VALIDATION
+  HUMAN_ACTION
+}
+
+model Case {
+  id                    String @id
+  productionOrderId     String
+  status                CaseStatus
+  priority              Priority
+  riskSignals           Json
+  activePlanVersion     Int
+  replanCount           Int
+  continuityImpact      Json
+  createdAt             DateTime
+  updatedAt             DateTime
+  queuedBehindCaseId    String?
+  agentState            AgentState?
+  productionOrder       ProductionOrder @relation(fields: [productionOrderId], references: [id])
+  purchaseOrders        PurchaseOrder[]
+  supplierMessages      SupplierMessage[]
+  rfqs                  RFQ[]
+  recoveryPlanVersions  RecoveryPlanVersion[]
+  approvalRequests      ApprovalRequest[]
+  auditEvents           AuditEvent[]
+  riskSignalRecords     RiskSignal[]
+}
+
+model AgentState {
+  caseId          String @id
+  currentStep     CaseStatus
+  cycle           Int
+  lastToolCalls   Json
+  toolCallCount   Int
+  lastLlmModel    String?
+  pendingLlmTask  String?
+  updatedAt       DateTime
+  case            Case @relation(fields: [caseId], references: [id])
+}
+
+model ProductionOrder {
+  id              String @id
+  sku             String
+  plannedQty      Float
+  bomQtyPerUnit   Float
+  deadlineDate    DateTime
+  priority        Priority
+  status          String
+  cases           Case[]
+}
+
+model InventoryRecord {
+  id                    String @id
+  sku                   String
+  warehouseId           String
+  currentStock          Float
+  usableStock           Float
+  dailyUsageRate        Float
+  safetyStockThreshold  Float
+  lastUpdatedAt         DateTime
+  stockDiscrepancyFlag  Boolean?
+}
+
+model Supplier {
+  id                    String @id
+  name                  String
+  certifications        Json
+  moq                   Float
+  maxCapacityPerCycle   Float
+  defaultLeadTimeDays   Float
+  reliabilityScore      Float
+  qualityScore          Float
+  pricePerUnit          Json
+  purchaseOrders        PurchaseOrder[]
+  messages              SupplierMessage[]
+}
+
+model SupplierMessage {
+  id                 String @id
+  supplierId         String
+  caseId             String
+  direction          Direction
+  subject            String
+  body               String
+  extractedFields    Json?
+  contradictionFlag  Boolean?
+  sentAt             DateTime
+  supplier           Supplier @relation(fields: [supplierId], references: [id])
+  case               Case @relation(fields: [caseId], references: [id])
+}
+
+model PurchaseOrder {
+  id                    String @id
+  supplierId            String
+  sku                   String
+  qty                   Float
+  unitPrice             Float
+  status                PurchaseOrderStatus
+  expectedDeliveryDate  DateTime
+  caseId                String?
+  supplier              Supplier @relation(fields: [supplierId], references: [id])
+  case                  Case? @relation(fields: [caseId], references: [id])
+}
+
+model RFQ {
+  id          String @id
+  caseId      String
+  sku         String
+  qty         Float
+  neededBy    DateTime
+  supplierIds Json
+  status      RfqStatus
+  responses   Json
+  case        Case @relation(fields: [caseId], references: [id])
+}
+
+model RecoveryPlanVersion {
+  id                       String @id
+  version                  Int
+  caseId                   String
+  parent_version           Int?
+  plan                     Json
+  invalidated_assumptions  Json
+  carried_forward_actions  Json
+  reason_for_change        String
+  triggering_event         String
+  status                   PlanVersionStatus
+  createdAt                DateTime
+  case                     Case @relation(fields: [caseId], references: [id])
+  validationResults        ValidationResult[]
+  approvalRequests         ApprovalRequest[]
+}
+
+model EmergencyBudget {
+  id              String @id
+  totalAmount     Float
+  reservedAmount  Float
+  spentAmount     Float
+  remainingAmount Float
+  updatedAt       DateTime
+}
+
+model ValidationResult {
+  id                    String @id
+  planVersionId         String
+  checks                Json
+  overallPassed         Boolean
+  withinApprovalThreshold Boolean
+  planVersion           RecoveryPlanVersion @relation(fields: [planVersionId], references: [id])
+}
+
+model ApprovalRequest {
+  id            String @id
+  caseId        String
+  planVersionId String
+  brief         String
+  status        ApprovalStatus
+  resolvedBy    String?
+  resolvedAt    DateTime?
+  case          Case @relation(fields: [caseId], references: [id])
+  planVersion   RecoveryPlanVersion @relation(fields: [planVersionId], references: [id])
+}
+
+model AuditEvent {
+  id        String @id
+  caseId    String
+  cycle     Int
+  timestamp DateTime
+  actor     AuditActor
+  type      AuditType
+  summary   String
+  detail    Json
+  case      Case @relation(fields: [caseId], references: [id])
+}
+
+model RiskSignal {
+  id         String @id
+  caseId     String
+  indicator  String
+  value      Float
+  threshold  Float
+  cycle      Int
+  timestamp  DateTime
+  source     String
+  case       Case @relation(fields: [caseId], references: [id])
+}
