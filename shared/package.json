@@ -3,5 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "main": "types/index.ts",
-  "types": "types/index.ts"
+  "types": "types/index.ts",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "@prisma/client": "^6.14.0",
+    "zod": "^4.4.3"
+  }
 }
