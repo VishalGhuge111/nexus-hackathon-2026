@@ -78,10 +78,41 @@ export async function transition(
   return { case: updatedCase, agentState };
 }
 
-export async function runAgentTick(
+// Per-case in-process lock: getStore() (shared/db/factory.ts) returns a single
+// process-wide Store instance for both MemoryStore and PrismaStore, so a
+// module-level promise-chain keyed by caseId is sufficient to guarantee that
+// concurrent runAgentTick calls for the SAME case never interleave their
+// store reads/writes (the proven cause of duplicate RecoveryPlanVersion rows
+// under React StrictMode's double-effect dev behavior). Calls for different
+// caseIds are never blocked by each other. This does not extend across
+// multiple server instances/processes.
+const caseTickLocks = new Map<string, Promise<void>>();
+
+function runExclusivePerCase<T>(caseId: string, fn: () => Promise<T>): Promise<T> {
+  const previousLock = caseTickLocks.get(caseId) ?? Promise.resolve();
+  const result = previousLock.then(fn, fn);
+  caseTickLocks.set(
+    caseId,
+    result.then(
+      () => undefined,
+      () => undefined
+    )
+  );
+  return result;
+}
+
+export function runAgentTick(
   deps: AgentDeps,
   caseId: string,
   now: Date = new Date()
+): Promise<{ case: Case; agentState: AgentState }> {
+  return runExclusivePerCase(caseId, () => runAgentTickInternal(deps, caseId, now));
+}
+
+async function runAgentTickInternal(
+  deps: AgentDeps,
+  caseId: string,
+  now: Date
 ): Promise<{ case: Case; agentState: AgentState }> {
   const { store } = deps;
   const caseRecord = await store.getCase(caseId);
