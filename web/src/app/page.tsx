@@ -102,6 +102,14 @@ export default function Page(): React.ReactElement {
   const [cachedApproval, setCachedApproval] = useState<ApprovalRequest | null>(null);
   const [liveResolvedDecision, setLiveResolvedDecision] = useState<ApprovalRequest["status"] | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Every fetchLiveDetail call claims the next number here before awaiting its
+  // GET. Concurrent callers (the poll loop and resolveLiveApproval's own
+  // post-resolve refresh) can have responses arrive out of send order —
+  // observed directly in network capture, e.g. a slow first-hit dev-server
+  // compile on an infrequently-called route delaying one response behind a
+  // later-sent one. Only the response whose claimed number is still the
+  // latest issued is applied; an older one that resolves late is discarded.
+  const latestLiveRequestIdRef = useRef(0);
 
   // The escalation modal never auto-opens (fixed regression from an earlier
   // pass) — it only opens via the explicit "Review Approval" CTA.
@@ -110,9 +118,11 @@ export default function Page(): React.ReactElement {
   const isLive = liveCaseId !== null;
 
   const fetchLiveDetail = useCallback(async (caseId: string) => {
+    const requestId = ++latestLiveRequestIdRef.current;
     const res = await fetch(`/api/cases/${caseId}`);
     if (!res.ok) return;
     const detail: LiveDetail = await res.json();
+    if (requestId !== latestLiveRequestIdRef.current) return;
     setLiveDetail(detail);
     if (detail.pendingApproval) setCachedApproval(detail.pendingApproval);
   }, []);
@@ -288,6 +298,7 @@ export default function Page(): React.ReactElement {
                 onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
                 onOpenModal={() => setModalOpen(true)}
                 disabled={isTriggering && !isLive}
+                isLive={isLive}
               />
             )}
           </div>
@@ -327,6 +338,7 @@ export default function Page(): React.ReactElement {
           onApprove={() => (isLive ? resolveLiveApproval("APPROVED") : setStaticApprovalDecision("APPROVED"))}
           onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
           onDismiss={() => setModalOpen(false)}
+          isLive={isLive}
         />
       )}
     </main>
