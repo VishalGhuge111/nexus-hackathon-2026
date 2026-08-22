@@ -9,6 +9,18 @@ import { PageHeader } from '../../components/layout/PageHeader';
 export default function IncidentsPage() {
   const { data, isLoading } = usePolling<DashboardSummary>('/api/dashboard/summary', 10000);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredCases = (data?.activeCases || []).filter(c => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.id.toLowerCase().includes(term) ||
+      c.productionOrderId.toLowerCase().includes(term) ||
+      (c.status && c.status.toLowerCase().includes(term)) ||
+      (c.priority && c.priority.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col h-full bg-zinc-50">
@@ -29,22 +41,21 @@ export default function IncidentsPage() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input 
             type="text" 
-            placeholder="Search incidents by ID, part, or supplier..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search incidents by ID, part, status, or supplier..." 
             className="w-full pl-9 pr-4 py-1.5 bg-zinc-50 border border-zinc-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
           />
         </div>
       </div>
       
-      <div className="flex-1 p-2">
-        {isLoading || !data ? (
-          <div className="p-12 text-center text-zinc-400">Loading incidents...</div>
-        ) : (
-          <IncidentGrid 
-            cases={data.activeCases} 
-            selectedId={selectedId} 
-            onSelect={(id) => setSelectedId(prev => prev === id ? null : id)} 
-          />
-        )}
+      <div className="flex-1 p-6">
+        <IncidentGrid 
+          cases={filteredCases} 
+          loading={isLoading}
+          selectedId={selectedId} 
+          onSelect={(id) => setSelectedId(prev => prev === id ? null : id)} 
+        />
       </div>
     </div>
   );

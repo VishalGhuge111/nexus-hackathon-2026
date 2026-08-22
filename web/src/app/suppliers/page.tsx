@@ -1,82 +1,166 @@
 ﻿'use client';
-import React from 'react';
-import { Building2, Filter, Shield, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-
-const MOCK_SUPPLIERS = [
-  { id: 'SUP-001', name: 'Supplier A', tier: 'Tier 1', risk: 'Low', reliability: 98, leadTime: '2-4 Days', region: 'North America' },
-  { id: 'SUP-002', name: 'Supplier B', tier: 'Tier 1', risk: 'Low', reliability: 95, leadTime: '3-5 Days', region: 'Europe' },
-  { id: 'SUP-003', name: 'Supplier C', tier: 'Tier 2', risk: 'High', reliability: 72, leadTime: '7-14 Days', region: 'Asia Pacific' },
-  { id: 'SUP-004', name: 'Supplier D', tier: 'Tier 1', risk: 'Medium', reliability: 88, leadTime: '5-7 Days', region: 'North America' },
-  { id: 'SUP-005', name: 'Supplier E', tier: 'Tier 3', risk: 'Low', reliability: 94, leadTime: '1-2 Days', region: 'Local' },
-];
+import { Search, Filter, Plus, User, MapPin, Activity, Package, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function SuppliersPage() {
+  const [isSheetOpen, setSheetOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const mockSuppliers = [
+    { id: 'SUP-A1', name: 'Alpha Manufacturing', location: 'Taiwan', reliability: '98%', status: 'Active' },
+    { id: 'SUP-B2', name: 'Beta Components', location: 'Shenzhen, CN', reliability: '92%', status: 'Warning' },
+    { id: 'SUP-C3', name: 'Gamma Precision', location: 'Germany', reliability: '99%', status: 'Active' },
+  ];
+
+  const handleAddSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAdding(true);
+    setTimeout(() => {
+      setIsAdding(false);
+      setSheetOpen(false);
+      toast.success('Supplier Onboarded', { description: 'New supplier has been added to the master list.' });
+    }, 2000);
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col h-full bg-zinc-50">
-      <PageHeader
-        title="Supplier Network"
-        description="Manage and monitor supplier risk and reliability metrics."
-        icon={<Building2 size={20} className="text-blue-500" />}
-        showBack={true}
+    <div className="flex-1 flex flex-col h-full bg-zinc-50 relative">
+      <PageHeader 
+        title="Supplier Network" 
+        description="Manage and monitor tier-1 and tier-2 suppliers"
+        icon={<User size={20} className="text-blue-600" />}
         actions={
-          <>
-            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md text-sm font-medium text-zinc-600 hover:bg-zinc-50 shadow-sm">
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-50">
               <Filter size={16} /> Filter
             </button>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-bold hover:bg-blue-700 shadow-sm">
-              Add Supplier
+            <button 
+              onClick={() => setSheetOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold hover:bg-zinc-800"
+            >
+              <Plus size={16} /> Add Supplier
             </button>
-          </>
+          </div>
         }
       />
-      
-      <div className="p-8">
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-zinc-50 text-xs text-zinc-500 uppercase tracking-wider font-bold border-b border-zinc-200">
-              <tr>
-                <th className="px-6 py-4">Supplier</th>
-                <th className="px-6 py-4">Tier</th>
-                <th className="px-6 py-4">Risk Profile</th>
-                <th className="px-6 py-4">Reliability</th>
-                <th className="px-6 py-4">Avg Lead Time</th>
-                <th className="px-6 py-4">Region</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {MOCK_SUPPLIERS.map(sup => (
-                <tr key={sup.id} className="hover:bg-zinc-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-zinc-900">{sup.name}</p>
-                    <p className="text-xs text-zinc-400 font-mono mt-0.5">{sup.id}</p>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-zinc-600">{sup.tier}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider
-                      ${sup.risk === 'Low' ? 'bg-emerald-50 text-emerald-700' : 
-                        sup.risk === 'High' ? 'bg-red-50 text-red-700' : 
-                        'bg-amber-50 text-amber-700'}`}>
-                      {sup.risk === 'Low' ? <Shield size={12} /> : <AlertTriangle size={12} />}
-                      {sup.risk}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-full bg-zinc-100 rounded-full h-1.5 max-w-[60px]">
-                        <div className={`h-1.5 rounded-full ${sup.reliability > 90 ? 'bg-emerald-500' : sup.reliability > 80 ? 'bg-blue-500' : 'bg-red-500'}`} style={{ width: `${sup.reliability}%` }} />
-                      </div>
-                      <span className="font-bold tabular-nums text-zinc-700">{sup.reliability}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-zinc-600">{sup.leadTime}</td>
-                  <td className="px-6 py-4 text-zinc-600">{sup.region}</td>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search suppliers by name, region, or capability..."
+              className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            />
+          </div>
+
+          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
+                <tr>
+                  <th className="px-6 py-4">Supplier Name</th>
+                  <th className="px-6 py-4">Location</th>
+                  <th className="px-6 py-4">Reliability Index</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {mockSuppliers.map(s => (
+                  <tr key={s.id} className="hover:bg-zinc-50 transition-colors group cursor-pointer">
+                    <td className="px-6 py-4 font-bold text-zinc-900">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded bg-zinc-100 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                          <Package size={14} className="text-zinc-500 group-hover:text-blue-600" />
+                        </div>
+                        {s.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-600 flex items-center gap-2">
+                      <MapPin size={14} className="text-zinc-400" /> {s.location}
+                    </td>
+                    <td className="px-6 py-4 text-zinc-900 font-mono">{s.reliability}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${s.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {s.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-zinc-400 hover:text-blue-600 font-medium text-xs uppercase tracking-wider">
+                        Manage
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
+
+      {/* Slide-over Sheet for Add Supplier */}
+      {isSheetOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSheetOpen(false)}></div>
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-100">
+              <h2 className="text-lg font-bold text-zinc-900">Onboard Supplier</h2>
+              <button onClick={() => setSheetOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddSupplier} className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-zinc-700 mb-1">Company Name</label>
+                <input required type="text" className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:border-blue-500" placeholder="e.g. Omega Logistics" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-zinc-700 mb-1">Location</label>
+                <input required type="text" className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:border-blue-500" placeholder="e.g. Frankfurt, DE" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-zinc-700 mb-1">Capacity (Units)</label>
+                  <input type="number" className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:border-blue-500" placeholder="10000" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-zinc-700 mb-1">Lead Time</label>
+                  <input type="text" className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:border-blue-500" placeholder="5 Days" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-zinc-700 mb-1">Reliability Target</label>
+                <select className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:border-blue-500">
+                  <option>Tier 1 (&gt;99%)</option>
+                  <option>Tier 2 (&gt;95%)</option>
+                  <option>Tier 3 (&gt;90%)</option>
+                </select>
+              </div>
+            </form>
+
+            <div className="p-6 border-t border-zinc-100 bg-zinc-50 flex gap-3">
+              <button 
+                type="button"
+                onClick={() => setSheetOpen(false)}
+                className="flex-1 px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg font-bold hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAddSupplier}
+                disabled={isAdding}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg font-bold hover:bg-zinc-800 disabled:opacity-70"
+              >
+                {isAdding ? <><Loader2 size={16} className="animate-spin" /> Verifying...</> : 'Save Supplier'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

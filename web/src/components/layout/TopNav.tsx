@@ -1,93 +1,86 @@
 ﻿'use client';
 import React, { useState } from 'react';
-import { Bell, ChevronDown, Factory, AlertTriangle, CheckCircle, X, XCircle, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-function NotificationDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 flex flex-col border-l border-zinc-200">
-            <div className="flex justify-between items-center px-4 py-4 border-b border-zinc-100">
-              <h2 className="font-bold text-zinc-900">Notifications</h2>
-              <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700"><X size={18} /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div>
-                <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2">Critical</p>
-                {['Shipment Delay — Bearing Assembly', 'Inventory coverage below threshold'].map(t => (
-                  <div key={t} className="p-3 bg-red-50 border border-red-100 rounded-md mb-2">
-                    <p className="text-sm font-medium text-red-800">{t}</p>
-                    <p className="text-xs text-red-400 mt-0.5">10:02</p>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2">Warnings</p>
-                {['Supplier B response delayed 2 hours', 'Demand spike detected +18%'].map(t => (
-                  <div key={t} className="p-3 bg-amber-50 border border-amber-100 rounded-md mb-2">
-                    <p className="text-sm font-medium text-amber-800">{t}</p>
-                    <p className="text-xs text-amber-400 mt-0.5">10:06</p>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-2">Info</p>
-                {['RFQ generated for 3 backup suppliers', 'Approval completed — Supplier B selected'].map(t => (
-                  <div key={t} className="p-3 bg-blue-50 border border-blue-100 rounded-md mb-2">
-                    <p className="text-sm font-medium text-blue-800">{t}</p>
-                    <p className="text-xs text-blue-400 mt-0.5">10:09</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
+import { Bell, ShieldCheck, AlertTriangle, ShieldAlert, FileWarning, Settings, User } from 'lucide-react';
+import { useMission, type ScenarioType } from '../../contexts/MissionContext';
+import { useNotifications } from '../../hooks/useNotifications';
+import { bus } from '../../events/eventBus';
 
 export function TopNav() {
+  const { scenario, setScenario } = useMission();
+  const { notifications, unreadCount, markAllRead } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <>
-      <header className="h-14 bg-white border-b border-zinc-200 flex items-center justify-between px-4 shrink-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 font-bold text-zinc-900 text-lg tracking-tight">
-            <Factory size={20} className="text-blue-600" />
-            NEXUS
+    <div className="h-14 bg-zinc-950 text-white flex items-center justify-between px-6 shrink-0 z-40 relative">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+            <ShieldCheck size={18} className="text-white" />
           </div>
-          <span className="text-zinc-300 text-lg">|</span>
-          <div className="hidden md:flex items-center gap-1.5 text-sm text-zinc-500">
-            <AlertTriangle size={14} className="text-amber-500" />
-            <span className="font-medium text-zinc-700">Active Incident</span>
-            <span className="text-zinc-400">·</span>
-            <span>Bearing Shipment Delay</span>
-            <span className="text-zinc-400">·</span>
-            <span className="text-red-600 font-semibold">2.1 Days Coverage Remaining</span>
+          <span className="font-bold text-lg tracking-tight">NEXUS</span>
+        </div>
+        <div className="h-4 w-px bg-zinc-800 mx-2"></div>
+        
+        {/* Scenario Switcher for Demo Purposes */}
+        <select 
+          value={scenario}
+          onChange={(e) => bus.publish('SCENARIO_CHANGED', { scenario: e.target.value as ScenarioType })}
+          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-300 focus:outline-none focus:border-blue-500"
+        >
+          <option value="HEALTHY">HEALTHY</option>
+          <option value="WARNING">EARLY WARNING</option>
+          <option value="RECOVERY">RECOVERY</option>
+          <option value="APPROVAL">APPROVAL</option>
+        </select>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <button className="text-zinc-400 hover:text-white transition-colors relative" onClick={() => setNotifOpen(!notifOpen)}>
+          <Bell size={18} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-zinc-950">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+        <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 text-zinc-400">
+          <User size={16} />
+        </div>
+      </div>
+
+      {notifOpen && (
+        <div className="absolute top-14 right-6 w-80 bg-white border border-zinc-200 rounded-xl shadow-2xl overflow-hidden z-50">
+          <div className="flex items-center justify-between p-4 border-b border-zinc-100 bg-zinc-50">
+            <h3 className="font-bold text-zinc-900 text-sm">Notifications</h3>
+            <button onClick={markAllRead} className="text-xs text-blue-600 font-medium hover:underline">Mark all read</button>
+          </div>
+          <div className="max-h-[400px] overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="p-8 text-center text-zinc-400 text-sm">No notifications</div>
+            ) : (
+              notifications.map(n => (
+                <div key={n.id} className={`p-4 border-b border-zinc-100 ${!n.read ? 'bg-blue-50/50' : 'bg-white'}`}>
+                  <div className="flex gap-3">
+                    <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.type === 'error' ? 'bg-red-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <div>
+                      <h4 className="text-sm font-bold text-zinc-900">{n.title}</h4>
+                      <p className="text-xs text-zinc-500 mt-1">{n.message}</p>
+                      {n.action && (
+                        <button 
+                          onClick={() => { bus.publish(n.action!.event, n.action!.payload); setNotifOpen(false); }}
+                          className="mt-2 px-3 py-1.5 bg-zinc-900 text-white rounded text-xs font-bold hover:bg-zinc-800 transition-colors"
+                        >
+                          {n.action.label}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">
-            <CheckCircle size={12} className="text-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-700">Monitoring Active</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm text-zinc-600 border border-zinc-200 rounded-md px-2.5 py-1.5 bg-white cursor-pointer hover:bg-zinc-50">
-            <span className="font-medium">Factory Alpha</span>
-            <ChevronDown size={14} className="text-zinc-400" />
-          </div>
-          <button onClick={() => setNotifOpen(true)} className="relative p-2 hover:bg-zinc-100 rounded-md transition-colors">
-            <Bell size={18} className="text-zinc-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer">OC</div>
-        </div>
-      </header>
-      <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
-    </>
+      )}
+    </div>
   );
 }
