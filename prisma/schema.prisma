@@ -3,8 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime queries (PrismaClient, shared/db/prismaClient.ts) always go through
+  // this pooled connection — unchanged.
+  url       = env("DATABASE_URL")
+  // Migrations/introspection (prisma migrate, prisma db push) need a direct,
+  // non-PgBouncer connection — Neon's standard split. Only the Prisma CLI reads
+  // this; it has no effect on the running application.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 enum CaseStatus {

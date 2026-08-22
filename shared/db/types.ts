@@ -12,10 +12,14 @@ import type {
 } from "../types/procurement";
 import type { ValidationResult, ApprovalRequest } from "../types/validation";
 import type { AuditEvent } from "../types/audit";
+import type { SupplierMessage } from "../types/supplier";
+import type { RFQ } from "../types/procurement";
 
 export interface Store {
   getCase(id: string): Promise<Case | null>;
   listActiveCases(): Promise<Case[]>;
+  /** Every Case regardless of status, including terminal (GOAL_ACHIEVED / NO_FEASIBLE_RECOVERY) — for audit/analytics views, not the agent loop. */
+  listAllCases(): Promise<Case[]>;
   findCaseByProductionOrder(productionOrderId: string): Promise<Case | null>;
   createCase(input: Case): Promise<Case>;
   updateCase(id: string, patch: Partial<Case>): Promise<Case>;
@@ -31,11 +35,21 @@ export interface Store {
 
   getPurchaseOrder(id: string): Promise<PurchaseOrder | null>;
   listPurchaseOrdersByCase(caseId: string): Promise<PurchaseOrder[]>;
+  /** Every PurchaseOrder across all cases/production orders — for the Orders/Shipments views. */
+  listAllPurchaseOrders(): Promise<PurchaseOrder[]>;
   createPurchaseOrder(po: PurchaseOrder): Promise<PurchaseOrder>;
   updatePurchaseOrder(id: string, patch: Partial<PurchaseOrder>): Promise<PurchaseOrder>;
 
   getSupplier(id: string): Promise<Supplier | null>;
   listSuppliers(): Promise<Supplier[]>;
+  updateSupplier(id: string, patch: Partial<Supplier>): Promise<Supplier>;
+
+  createSupplierMessage(msg: SupplierMessage): Promise<void>;
+  listSupplierMessagesByCase(caseId: string): Promise<SupplierMessage[]>;
+
+  createRfq(rfq: RFQ): Promise<void>;
+  listRfqsByCase(caseId: string): Promise<RFQ[]>;
+  updateRfq(id: string, patch: Partial<RFQ>): Promise<RFQ>;
 
   getEmergencyBudget(): Promise<EmergencyBudget>;
   updateEmergencyBudget(patch: Partial<EmergencyBudget>): Promise<EmergencyBudget>;
@@ -54,4 +68,6 @@ export interface Store {
 
   appendAuditEvent(event: AuditEvent): Promise<void>;
   listAuditEvents(caseId: string): Promise<AuditEvent[]>;
+  /** Every AuditEvent across all cases — for the global Audit/Analytics views. */
+  listAllAuditEvents(): Promise<AuditEvent[]>;
 }

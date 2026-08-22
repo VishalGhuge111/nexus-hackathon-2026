@@ -17,8 +17,6 @@ import type { ValidatorAllocation, ValidatorContext, ValidatorPlanInput } from "
 import {
   inventoryLookup,
   purchaseOrderLookup,
-  productionScheduleLookup,
-  shipmentTrackingLookup,
   approvalCheckTool,
   erpUpdateTool,
   escalationCreateTool,
@@ -80,10 +78,41 @@ export async function transition(
   return { case: updatedCase, agentState };
 }
 
-export async function runAgentTick(
+// Per-case in-process lock: getStore() (shared/db/factory.ts) returns a single
+// process-wide Store instance for both MemoryStore and PrismaStore, so a
+// module-level promise-chain keyed by caseId is sufficient to guarantee that
+// concurrent runAgentTick calls for the SAME case never interleave their
+// store reads/writes (the proven cause of duplicate RecoveryPlanVersion rows
+// under React StrictMode's double-effect dev behavior). Calls for different
+// caseIds are never blocked by each other. This does not extend across
+// multiple server instances/processes.
+const caseTickLocks = new Map<string, Promise<void>>();
+
+function runExclusivePerCase<T>(caseId: string, fn: () => Promise<T>): Promise<T> {
+  const previousLock = caseTickLocks.get(caseId) ?? Promise.resolve();
+  const result = previousLock.then(fn, fn);
+  caseTickLocks.set(
+    caseId,
+    result.then(
+      () => undefined,
+      () => undefined
+    )
+  );
+  return result;
+}
+
+export function runAgentTick(
   deps: AgentDeps,
   caseId: string,
   now: Date = new Date()
+): Promise<{ case: Case; agentState: AgentState }> {
+  return runExclusivePerCase(caseId, () => runAgentTickInternal(deps, caseId, now));
+}
+
+async function runAgentTickInternal(
+  deps: AgentDeps,
+  caseId: string,
+  now: Date
 ): Promise<{ case: Case; agentState: AgentState }> {
   const { store } = deps;
   const caseRecord = await store.getCase(caseId);
@@ -142,11 +171,12 @@ async function handleEarlyRiskCheck(
   const productionOrder = await store.getProductionOrder(caseRecord.productionOrderId);
   if (!productionOrder) throw new Error(`ProductionOrder ${caseRecord.productionOrderId} not found`);
 
+  // productionOrder was already read directly above to build this cycle's
+  // context; a separate dispatched production_schedule_lookup call here would
+  // re-fetch the identical record and discard the result, spending a tool-call
+  // budget unit for zero additional information.
   const inventoryResult = await dispatchTool(dispatchCtx, "inventory_lookup", () =>
     inventoryLookup(store, productionOrder.sku)
-  );
-  await dispatchTool(dispatchCtx, "production_schedule_lookup", () =>
-    productionScheduleLookup(store, productionOrder.id)
   );
 
   if (inventoryResult.status !== "SUCCESS" || !inventoryResult.data) {
@@ -214,15 +244,42 @@ async function handleVerify(
   }
   const po = linkedPOs[0];
 
+  // §12 requires "at least one independent tool call beyond the triggering
+  // signal" — purchase_order_lookup alone satisfies that. shipment_tracking_lookup
+  // is intentionally not also called here: in this simulation it derives its
+  // {lastEvent, status} directly from the same PurchaseOrder record (see
+  // shared/tools/primitives.ts), so calling both provides zero additional
+  // independent evidence while consuming a second tool-call-budget unit.
   const poResult = await dispatchTool(dispatchCtx, "purchase_order_lookup", () =>
     purchaseOrderLookup(store, po.id)
   );
-  const trackingResult = await dispatchTool(dispatchCtx, "shipment_tracking_lookup", () =>
-    shipmentTrackingLookup(store, po.id)
-  );
 
-  if (poResult.status !== "SUCCESS" || trackingResult.status !== "SUCCESS") {
-    await audit(store, caseRecord.id, agentState.cycle, "AGENT", "STATE_TRANSITION", "VERIFY inconclusive: NO_DATA, will re-check next cycle");
+  if (poResult.status !== "SUCCESS") {
+    // §12: "stays open but does not advance to PLAN — it re-checks next cycle
+    // (max 3 cycles before auto-escalating as 'unverifiable risk')." Cycle
+    // number doesn't advance on a stall (transition() is what increments it),
+    // so counting prior "VERIFY inconclusive" entries at the current cycle is
+    // exactly the retry count. Only poResult gates this — shipment_tracking_lookup
+    // is deliberately not also dispatched here (see the comment above); it
+    // would derive from the same PurchaseOrder record and cost a second
+    // tool-call-budget unit for zero additional independent evidence.
+    const audits = await store.listAuditEvents(caseRecord.id);
+    const verifyNoDataCount = audits.filter(
+      (a) => a.summary.includes("VERIFY inconclusive: NO_DATA") && a.cycle === agentState.cycle
+    ).length;
+
+    if (verifyNoDataCount >= 2) {
+      return transition(store, caseRecord, agentState, "NO_FEASIBLE_RECOVERY", "unverifiable risk after 3 cycles of NO_DATA");
+    }
+
+    await audit(
+      store,
+      caseRecord.id,
+      agentState.cycle,
+      "AGENT",
+      "STATE_TRANSITION",
+      `VERIFY inconclusive: NO_DATA, will re-check next cycle (attempt ${verifyNoDataCount + 1})`
+    );
     await store.upsertAgentState(agentState);
     return { case: caseRecord, agentState };
   }
@@ -275,6 +332,17 @@ async function handlePlan(
   if (shortageQty === 0) {
     return transition(store, caseRecord, agentState, "VERIFY_OUTCOME", "no shortage projected; verifying goal is already met");
   }
+
+  // Reflect the real, currently-known risk as soon as it's computed, not only
+  // at NO_FEASIBLE_RECOVERY or after outcome_reread. Without this, Case.continuityImpact
+  // stays at its creation-time placeholder (0 units, no breach) all the way through
+  // PLAN/VALIDATE/EXECUTE_OR_ESCALATE/HUMAN_ESCALATED_AWAITING_DECISION — so the KPI
+  // bar and Risk panel would show "0 units at risk" while a human is being asked to
+  // approve a genuine shortage. handleVerifyOutcome still overwrites this with the
+  // real post-execution numbers once the plan runs.
+  await store.updateCase(caseRecord.id, {
+    continuityImpact: { unitsAtRisk: shortageQty, deadlineBreached: true }
+  });
 
   const deadlineDate = new Date(productionOrder.deadlineDate);
   const daysUntilDeadline = (deadlineDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
@@ -330,6 +398,14 @@ async function handlePlan(
   }
 
   const pendingRejection = agentState.pendingLlmTask;
+  let previousAllocations: { supplierId: string; qty: number; }[] | undefined;
+  if (caseRecord.activePlanVersion > 0) {
+      const activePlan = await store.getActivePlanVersion(caseRecord.id);
+      if (activePlan) {
+          previousAllocations = activePlan.plan.allocations.map(a => ({ supplierId: a.supplierId, qty: a.qty }));
+      }
+  }
+
   const proposedPlan = await llm.proposeRecoveryPlan({
     caseId: caseRecord.id,
     sku: productionOrder.sku,
@@ -338,7 +414,8 @@ async function handlePlan(
     deadlineDate: productionOrder.deadlineDate,
     disruptionSummary: `Existing purchase order(s) for ${productionOrder.sku} will not arrive before the production deadline.`,
     eligibleSuppliers: eligible,
-    previousPlanRejectionReason: pendingRejection
+    previousPlanRejectionReason: pendingRejection,
+    previousPlanAllocations: previousAllocations
   });
   await audit(store, caseRecord.id, agentState.cycle, "AGENT", "LLM_CALL", "Sonnet proposed a recovery plan", {
     allocationCount: proposedPlan.allocations.length,

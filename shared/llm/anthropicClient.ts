@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ProposedPlanSchema } from "./schemas";
 import type { EscalationBriefRequest, LlmClient, PlanProposalRequest, ProposedPlan } from "./types";
 
-const SONNET_MODEL = "claude-sonnet-5"; // PRD §9: Sonnet for reasoning/drafting
+export const SONNET_MODEL = "claude-sonnet-5"; // PRD §9: Sonnet for reasoning/drafting
 
 const PROPOSE_PLAN_TOOL: Anthropic.Tool = {
   name: "propose_recovery_plan",

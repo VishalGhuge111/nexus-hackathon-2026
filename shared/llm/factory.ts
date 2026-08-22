@@ -11,6 +11,6 @@ export function getLlmClient(): LlmClient {
   if (global.__nexusLlmClient) return global.__nexusLlmClient;
   global.__nexusLlmClient = process.env.ANTHROPIC_API_KEY
     ? new AnthropicLlmClient(process.env.ANTHROPIC_API_KEY)
-    : new StubLlmClient();
+    : new StubLlmClient({ forceInitialUndershoot: true });
   return global.__nexusLlmClient;
 }
