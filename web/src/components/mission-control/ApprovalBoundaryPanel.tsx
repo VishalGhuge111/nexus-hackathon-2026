@@ -11,13 +11,22 @@ export function ApprovalBoundaryPanel({
   decision,
   onApprove,
   onReject,
-  onOpenModal
+  onOpenModal,
+  disabled = false
 }: {
   approvalRequest: ApprovalRequest;
   decision: ApprovalRequest["status"];
   onApprove: () => void;
   onReject: () => void;
   onOpenModal?: () => void;
+  /**
+   * True only during the brief window after a judge event has been triggered
+   * but before the live case has loaded — the panel shown at that instant is
+   * still the static demo fixture's, and clicking its controls would silently
+   * act on stale content instead of the incoming live one. Disables Review
+   * Approval / Approve / Reject until that window closes.
+   */
+  disabled?: boolean;
 }): React.ReactElement {
   return (
     <Panel
@@ -34,11 +43,15 @@ export function ApprovalBoundaryPanel({
       {decision === "PENDING" && onOpenModal && (
         <button
           onClick={onOpenModal}
-          className="mb-4 flex w-full items-center justify-between rounded border border-amber-700 bg-amber-900/30 px-3 py-2.5 text-left hover:bg-amber-900/50"
+          disabled={disabled}
+          className="mb-4 flex w-full items-center justify-between rounded border border-amber-700 bg-amber-900/30 px-3 py-2.5 text-left hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-amber-900/30"
         >
           <span className="text-xs font-semibold uppercase tracking-wide text-amber-300">Human action required</span>
           <span className="rounded bg-amber-600 px-2.5 py-1 text-xs font-semibold text-amber-950">Review Approval</span>
         </button>
+      )}
+      {disabled && (
+        <p className="mb-4 text-[11px] text-sky-400">Starting live run — controls re-enable once the live case loads.</p>
       )}
 
       <p className="mb-4 text-sm leading-relaxed text-slate-300">{approvalRequest.brief}</p>
@@ -48,13 +61,15 @@ export function ApprovalBoundaryPanel({
         <div className="flex gap-2">
           <button
             onClick={onApprove}
-            className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600"
+            disabled={disabled}
+            className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-emerald-700"
           >
             Approve
           </button>
           <button
             onClick={onReject}
-            className="rounded bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600"
+            disabled={disabled}
+            className="rounded bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-red-700"
           >
             Reject
           </button>

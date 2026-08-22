@@ -90,6 +90,12 @@ export default function Page(): React.ReactElement {
   );
 
   // Live-mode state.
+  // True only from the moment "Shipment Delayed 24h" is clicked until the live
+  // case has actually loaded (isLive flips true). During that window the panel
+  // still visibly showing is the static demo fixture's — this guards its
+  // Review Approval / Approve / Reject controls so a click can't silently act
+  // on stale static content instead of the incoming live case.
+  const [isTriggering, setIsTriggering] = useState(false);
   const [liveCaseId, setLiveCaseId] = useState<string | null>(null);
   const [liveDetail, setLiveDetail] = useState<LiveDetail | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
@@ -142,6 +148,7 @@ export default function Page(): React.ReactElement {
   }, [liveCaseId, fetchLiveDetail]);
 
   async function triggerShipmentDelay(): Promise<void> {
+    setIsTriggering(true);
     setLiveError(null);
     setLiveResolvedDecision(null);
     setCachedApproval(null);
@@ -161,6 +168,8 @@ export default function Page(): React.ReactElement {
       await fetchLiveDetail(json.caseId);
     } catch (err) {
       setLiveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsTriggering(false);
     }
   }
 
@@ -278,6 +287,7 @@ export default function Page(): React.ReactElement {
                 onApprove={() => (isLive ? resolveLiveApproval("APPROVED") : setStaticApprovalDecision("APPROVED"))}
                 onReject={() => (isLive ? resolveLiveApproval("REJECTED") : setStaticApprovalDecision("REJECTED"))}
                 onOpenModal={() => setModalOpen(true)}
+                disabled={isTriggering && !isLive}
               />
             )}
           </div>
@@ -305,7 +315,7 @@ export default function Page(): React.ReactElement {
         <div className="mt-8 border-t border-slate-900 pt-6">
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_260px]">
             <AuditTimeline auditEvents={displayAuditEvents} />
-            <JudgeControlStrip onTriggerShipmentDelay={triggerShipmentDelay} disabled={isLive} />
+            <JudgeControlStrip onTriggerShipmentDelay={triggerShipmentDelay} disabled={isLive || isTriggering} />
           </div>
         </div>
       </div>

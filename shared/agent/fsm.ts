@@ -302,6 +302,17 @@ async function handlePlan(
     return transition(store, caseRecord, agentState, "VERIFY_OUTCOME", "no shortage projected; verifying goal is already met");
   }
 
+  // Reflect the real, currently-known risk as soon as it's computed, not only
+  // at NO_FEASIBLE_RECOVERY or after outcome_reread. Without this, Case.continuityImpact
+  // stays at its creation-time placeholder (0 units, no breach) all the way through
+  // PLAN/VALIDATE/EXECUTE_OR_ESCALATE/HUMAN_ESCALATED_AWAITING_DECISION — so the KPI
+  // bar and Risk panel would show "0 units at risk" while a human is being asked to
+  // approve a genuine shortage. handleVerifyOutcome still overwrites this with the
+  // real post-execution numbers once the plan runs.
+  await store.updateCase(caseRecord.id, {
+    continuityImpact: { unitsAtRisk: shortageQty, deadlineBreached: true }
+  });
+
   const deadlineDate = new Date(productionOrder.deadlineDate);
   const daysUntilDeadline = (deadlineDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
   const excludeSupplierIds = new Set(linkedPOs.map((po) => po.supplierId));
