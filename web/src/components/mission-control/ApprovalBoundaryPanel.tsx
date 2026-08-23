@@ -86,7 +86,7 @@ export function ApprovalBoundaryPanel({
             <div className="flex items-center gap-2 text-xs font-medium text-zinc-600">
               <CheckCircle2 size={15} className="text-emerald-600" />
               <span>
-                Escalation resolved as <strong className="text-zinc-900">{decision}</strong>. Cryptographic decision audit event written to ledger.
+                Escalation resolved as <strong className="text-zinc-900">{decision}</strong>. Decision recorded in audit trail.
               </span>
             </div>
           )}
