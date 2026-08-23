@@ -10,6 +10,8 @@ export interface Supplier {
 	pricePerUnit: Record<string, number>;
 	/** §17 eligibility input — set by a verified tracking/supplier-claim mismatch (see SUPPLIER_CLAIM_CONTRADICTION event). Defaults to false/undefined for every seeded supplier. */
 	hasOpenContradiction?: boolean;
+	/** PS §5.5/5.6 — supplier communication recipient. Undefined means supplier_message_send has no address to deliver to and records the communication without emailing. */
+	contactEmail?: string;
 }
 
 export interface SupplierMessage {

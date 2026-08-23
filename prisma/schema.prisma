@@ -147,6 +147,7 @@ model Supplier {
   qualityScore          Float
   pricePerUnit          Json
   hasOpenContradiction  Boolean? @default(false)
+  contactEmail          String?
   purchaseOrders        PurchaseOrder[]
   messages              SupplierMessage[]
 }

@@ -51,9 +51,15 @@ async function main(): Promise<void> {
         defaultLeadTimeDays: supplier.defaultLeadTimeDays,
         reliabilityScore: supplier.reliabilityScore,
         qualityScore: supplier.qualityScore,
-        pricePerUnit: supplier.pricePerUnit
+        pricePerUnit: supplier.pricePerUnit,
+        contactEmail: supplier.contactEmail ?? null
       },
-      update: {}
+      // Backfills contactEmail (added for PS §5.5/5.6 supplier communication)
+      // onto rows seeded before this field existed, without touching anything
+      // a live demo run may since have changed on the other fields.
+      update: {
+        contactEmail: supplier.contactEmail ?? null
+      }
     });
   }
 

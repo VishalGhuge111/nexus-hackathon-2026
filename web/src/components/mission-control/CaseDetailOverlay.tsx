@@ -10,6 +10,7 @@ import { RiskImpactSummary } from "./RiskImpactSummary";
 import { LiveAgentTracePanel } from "./LiveAgentTracePanel";
 import { InventoryCoveragePanel } from "./InventoryCoveragePanel";
 import { SupplierShipmentPanel } from "./SupplierShipmentPanel";
+import { SupplierCommunicationPanel } from "./SupplierCommunicationPanel";
 import { RecoveryPlanPanel } from "./RecoveryPlanPanel";
 import { PlanVersionLineage } from "./PlanVersionLineage";
 import { ApprovalBoundaryPanel } from "./ApprovalBoundaryPanel";
@@ -203,6 +204,12 @@ export function CaseDetailOverlay({
     return map;
   }, [detail]);
 
+  const supplierNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const { supplier } of detail?.supplierEligibility ?? []) map[supplier.id] = supplier.name;
+    return map;
+  }, [detail]);
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-50 text-zinc-900 select-none">
       {/* Sticky Top Header */}
@@ -299,6 +306,7 @@ export function CaseDetailOverlay({
                   rfqResponses={rfqResponses}
                 />
               )}
+              <SupplierCommunicationPanel messages={detail.supplierMessages} supplierNames={supplierNames} />
             </div>
 
             {/* Right Column: What Was Recommended & Validated */}

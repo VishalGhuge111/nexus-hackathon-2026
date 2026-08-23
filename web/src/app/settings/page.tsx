@@ -1,7 +1,7 @@
 ﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Settings, Database, Cpu, CheckCircle2, AlertCircle, Shield, Sliders, Server } from 'lucide-react';
+import { Settings, Database, Cpu, CheckCircle2, AlertCircle, Shield, Sliders, Server, Mail } from 'lucide-react';
 import { fetchSystemStatus } from '../../lib/api-client';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -126,6 +126,29 @@ export default function SettingsPage() {
               />
               {status.llm.model && <StatusRow label="Model Identifier" value={status.llm.model} />}
               <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{status.llm.description}</p>
+            </div>
+
+            {/* Supplier Communication Channel */}
+            <div className="bg-white border border-zinc-200/80 rounded-xl p-5 shadow-2xs">
+              <div className="flex items-center justify-between mb-3 border-b border-zinc-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Mail size={16} className="text-blue-600" />
+                  <h2 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                    Supplier Communication
+                  </h2>
+                </div>
+                {status.supplierCommunication.configured ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <CheckCircle2 size={12} /> Connected
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    <AlertCircle size={12} /> Not Configured
+                  </span>
+                )}
+              </div>
+              <StatusRow label="Provider" value={status.supplierCommunication.provider} />
+              <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{status.supplierCommunication.description}</p>
             </div>
 
             {/* Governance Safety Boundaries */}

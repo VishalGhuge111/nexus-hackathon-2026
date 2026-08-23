@@ -8,7 +8,7 @@ import type { ProductionOrder } from '@nexus/shared/types/production';
 import type { InventoryRecord } from '@nexus/shared/types/inventory';
 import type { PurchaseOrder, RecoveryPlanVersion, RFQ } from '@nexus/shared/types/procurement';
 import type { Case } from '@nexus/shared/types/case';
-import type { Supplier } from '@nexus/shared/types/supplier';
+import type { Supplier, SupplierMessage } from '@nexus/shared/types/supplier';
 import type { EligibilityResult } from '@nexus/shared/supplier';
 import { ORIGINAL_PO_ID, ORIGINAL_SUPPLIER_ID, ALTERNATE_SUPPLIER_ID, PRODUCTION_ORDER_ID } from '@nexus/shared/db/demoSeed';
 
@@ -58,6 +58,7 @@ export interface CaseDetail {
   auditEvents: AuditEvent[];
   rfqs: RFQ[];
   supplierEligibility: { supplier: Supplier; result: EligibilityResult }[];
+  supplierMessages: SupplierMessage[];
   disruptedSupplierId: string | null;
 }
 
@@ -97,6 +98,7 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetail> {
     auditEvents?: AuditEvent[];
     rfqs?: RFQ[];
     supplierEligibility?: { supplier: Supplier; result: EligibilityResult }[];
+    supplierMessages?: SupplierMessage[];
     disruptedSupplierId?: string | null;
   };
 
@@ -114,6 +116,7 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetail> {
     auditEvents: json.auditEvents ?? [],
     rfqs: json.rfqs ?? [],
     supplierEligibility: json.supplierEligibility ?? [],
+    supplierMessages: json.supplierMessages ?? [],
     disruptedSupplierId: json.disruptedSupplierId ?? null
   };
 }
@@ -296,6 +299,7 @@ export async function fetchAnalyticsSummary(weeks = 4): Promise<AnalyticsSummary
 export interface SystemStatus {
   database: { mode: 'neon' | 'memory'; configured: boolean; description: string };
   llm: { mode: 'anthropic' | 'stub'; configured: boolean; model: string | null; description: string };
+  supplierCommunication: { provider: 'Brevo'; configured: boolean; description: string };
   agentConfig: {
     maxToolCallsPerCase: number;
     maxReplans: number;

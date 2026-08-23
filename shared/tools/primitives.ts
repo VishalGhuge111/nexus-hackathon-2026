@@ -11,6 +11,7 @@ import type { ApprovalRequest } from "../types/validation";
 import type { SupplierMessage } from "../types/supplier";
 import { DEFAULT_APPROVAL_THRESHOLD } from "../config";
 import { newId } from "../util/id";
+import { sendTransactionalEmail, type EmailDeliveryStatus } from "../email/brevoClient";
 
 export async function inventoryLookup(
   store: Store,
@@ -234,28 +235,88 @@ export async function rfqRequestTool(
   }
 }
 
+export interface SupplierMessageSendOutcome {
+  supplierId: string;
+  messageId: string;
+  emailStatus: EmailDeliveryStatus;
+  emailError?: string;
+  providerMessageId?: string;
+  /** Actual delivery target — the override address when SUPPLIER_EMAIL_OVERRIDE is set, otherwise the supplier's own contactEmail. */
+  to?: string;
+  /** The supplier's real address on file, independent of any override — always preserved so the record shows who NEXUS actually meant to contact. */
+  intendedRecipient?: string;
+  overrideUsed: boolean;
+}
+
+/**
+ * PS §5.5/5.6 — sends one real email per supplier via Brevo (falling back to
+ * "recorded only" when unconfigured or the supplier has no contactEmail on
+ * file) and always records a SupplierMessage regardless of email outcome.
+ * One dispatchTool call handles the whole supplier list (mirrors
+ * rfqRequestTool's internal loop over supplierIds) so a case with several
+ * eligible suppliers still only spends a single tool-call-budget unit here.
+ * Email delivery is never allowed to throw — a provider outage degrades to
+ * emailStatus: 'FAILED' on that one outcome, not a failed tool call.
+ */
 export async function supplierMessageSendTool(
   store: Store,
-  params: { supplierId: string; caseId: string; subject: string; body: string }
-): Promise<ToolResult<{ sent: boolean; messageId: string }>> {
+  params: {
+    caseId: string;
+    messages: { supplierId: string; subject: string; body: string; communicationType?: string }[];
+  }
+): Promise<ToolResult<SupplierMessageSendOutcome[]>> {
   try {
-    const message: SupplierMessage = {
-      id: newId("msg"),
-      supplierId: params.supplierId,
-      caseId: params.caseId,
-      direction: "OUTBOUND",
-      subject: params.subject,
-      body: params.body,
-      sentAt: new Date().toISOString()
-    };
-    await store.createSupplierMessage(message);
+    const outcomes: SupplierMessageSendOutcome[] = [];
 
-    return {
-      toolName: "supplier_message_send",
-      status: "SUCCESS",
-      data: { sent: true, messageId: message.id },
-      latencyMs: 0
-    };
+    for (const m of params.messages) {
+      const supplier = await store.getSupplier(m.supplierId);
+      const intendedRecipient = supplier?.contactEmail;
+      const override = process.env.SUPPLIER_EMAIL_OVERRIDE;
+      const to = override || intendedRecipient;
+      const overrideUsed = Boolean(override);
+
+      const emailResult = to
+        ? await sendTransactionalEmail({
+            to,
+            toName: supplier?.name,
+            subject: m.subject,
+            htmlBody: m.body.replace(/\n/g, "<br/>")
+          })
+        : { status: "NOT_CONFIGURED" as const, errorReason: "No contact email on file for this supplier" };
+
+      const message: SupplierMessage = {
+        id: newId("msg"),
+        supplierId: m.supplierId,
+        caseId: params.caseId,
+        direction: "OUTBOUND",
+        subject: m.subject,
+        body: m.body,
+        extractedFields: {
+          communicationType: m.communicationType ?? "RFQ_REQUEST",
+          emailStatus: emailResult.status,
+          emailError: emailResult.errorReason,
+          providerMessageId: emailResult.providerMessageId,
+          to: to ?? null,
+          intendedRecipient: intendedRecipient ?? null,
+          overrideUsed
+        },
+        sentAt: new Date().toISOString()
+      };
+      await store.createSupplierMessage(message);
+
+      outcomes.push({
+        supplierId: m.supplierId,
+        messageId: message.id,
+        emailStatus: emailResult.status,
+        emailError: emailResult.errorReason,
+        providerMessageId: emailResult.providerMessageId,
+        to,
+        intendedRecipient,
+        overrideUsed
+      });
+    }
+
+    return { toolName: "supplier_message_send", status: "SUCCESS", data: outcomes, latencyMs: 0 };
   } catch (err) {
     return {
       toolName: "supplier_message_send",
@@ -268,11 +329,11 @@ export async function supplierMessageSendTool(
 
 export async function supplierMessageReceiveTool(
   store: Store,
-  params: { supplierId: string; caseId: string }
+  params: { supplierIds: string[]; caseId: string }
 ): Promise<ToolResult<SupplierMessage[]>> {
   const messages = await store.listSupplierMessagesByCase(params.caseId);
-  const inbound = messages.filter((m) => m.supplierId === params.supplierId && m.direction === "INBOUND");
-  
+  const inbound = messages.filter((m) => params.supplierIds.includes(m.supplierId) && m.direction === "INBOUND");
+
   if (inbound.length === 0) {
     return {
       toolName: "supplier_message_receive",
@@ -286,5 +347,37 @@ export async function supplierMessageReceiveTool(
     status: "SUCCESS",
     data: inbound,
     latencyMs: 0
+  };
+}
+
+/**
+ * PS §5.5 — represents a supplier's quote reply as an inbound message in the
+ * same communication thread, deriving every field from the RfqResponse the
+ * (existing, real) RFQ engine already produced. This does not duplicate
+ * supplier data; it re-presents it as a message, the same pattern
+ * shared/agent/events.ts already uses for the SUPPLIER_CLAIM_CONTRADICTION
+ * inbound message.
+ */
+export function buildQuoteInboundMessage(params: {
+  caseId: string;
+  sku: string;
+  response: RfqResponse;
+}): SupplierMessage {
+  const { caseId, sku, response } = params;
+  const expediteNote = response.expediteAvailable
+    ? ` Expedited delivery available for an additional fee of ₹${response.expediteFee}/unit.`
+    : "";
+  return {
+    id: newId("msg"),
+    supplierId: response.supplierId,
+    caseId,
+    direction: "INBOUND",
+    subject: `RE: Urgent RFQ — ${sku} Recovery Requirement`,
+    body:
+      `We can supply ${response.capacityOffered} units of ${sku} at ₹${response.price}/unit, ` +
+      `with a ${response.leadTimeDays}-day lead time. Quote valid for ${response.quoteValidHours} hours.` +
+      expediteNote,
+    extractedFields: { communicationType: "QUOTE_RESPONSE", ...response },
+    sentAt: response.quoteReceivedAt
   };
 }

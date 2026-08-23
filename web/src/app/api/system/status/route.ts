@@ -3,6 +3,7 @@
 // non-secret agent-policy constants already defined in shared/config.ts —
 // nothing here is invented, and nothing here is a secret.
 import { SONNET_MODEL } from "@nexus/shared/llm/anthropicClient";
+import { isBrevoConfigured } from "@nexus/shared/email/brevoClient";
 import {
   MAX_TOOL_CALLS_PER_CASE,
   MAX_REPLANS,
@@ -30,6 +31,13 @@ export async function GET(): Promise<Response> {
       description: hasAnthropicKey
         ? `ANTHROPIC_API_KEY is set — recovery plans are proposed by the real ${SONNET_MODEL} model.`
         : "ANTHROPIC_API_KEY is not set — recovery plans are proposed by the deterministic local stand-in, not a live model."
+    },
+    supplierCommunication: {
+      provider: "Brevo",
+      configured: isBrevoConfigured(),
+      description: isBrevoConfigured()
+        ? "BREVO_API_KEY and BREVO_SENDER_EMAIL are set — supplier RFQ emails are sent through the real Brevo API."
+        : "BREVO_API_KEY/BREVO_SENDER_EMAIL are not set — supplier communications are recorded in the audit trail but no email is sent."
     },
     agentConfig: {
       maxToolCallsPerCase: MAX_TOOL_CALLS_PER_CASE,

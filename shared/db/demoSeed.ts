@@ -55,7 +55,13 @@ export function buildDemoFixture(now: Date = new Date()): DemoFixture {
         defaultLeadTimeDays: 5,
         reliabilityScore: 0.85,
         qualityScore: 0.8,
-        pricePerUnit: { [SKU]: 150 }
+        pricePerUnit: { [SKU]: 150 },
+        // PS §5.5/5.6 — a real recipient address for supplier_message_send. The
+        // .example TLD is IANA-reserved as permanently non-routable (RFC 2606),
+        // so demo emails can genuinely be sent through Brevo's API without ever
+        // risking delivery to a real inbox. Set SUPPLIER_EMAIL_OVERRIDE to a real
+        // address to verify actual delivery instead.
+        contactEmail: "sourcing@orbitalcomponents.example"
       },
       {
         id: ALTERNATE_SUPPLIER_ID,
@@ -66,7 +72,8 @@ export function buildDemoFixture(now: Date = new Date()): DemoFixture {
         defaultLeadTimeDays: 2,
         reliabilityScore: 0.78,
         qualityScore: 0.82,
-        pricePerUnit: { [SKU]: 166.67 }
+        pricePerUnit: { [SKU]: 166.67 },
+        contactEmail: "rfq@velocepartsco.example"
       }
     ],
     purchaseOrders: [

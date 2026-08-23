@@ -234,7 +234,14 @@ export async function applySupplierClaimContradictionEvent(
     direction: "INBOUND",
     subject: `RE: PO ${po.id} status`,
     body: `PO ${po.id} has been ${payload.claimedStatus}.`,
-    extractedFields: { claimedStatus: payload.claimedStatus },
+    extractedFields: {
+      communicationType: "CONTRADICTION",
+      claimedStatus: payload.claimedStatus,
+      // Independent tracking evidence, carried alongside the supplier's own
+      // claim so the case detail UI can render the claim/verification pair
+      // (PS §5.5) without a second lookup.
+      trackingStatus: payload.trackingStatus
+    },
     contradictionFlag: true,
     sentAt: now.toISOString()
   };

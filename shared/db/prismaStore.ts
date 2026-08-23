@@ -137,6 +137,7 @@ function toSupplier(row: {
   qualityScore: number;
   pricePerUnit: unknown;
   hasOpenContradiction?: boolean | null;
+  contactEmail?: string | null;
 }): Supplier {
   return {
     id: row.id,
@@ -148,7 +149,8 @@ function toSupplier(row: {
     reliabilityScore: row.reliabilityScore,
     qualityScore: row.qualityScore,
     pricePerUnit: row.pricePerUnit as Record<string, number>,
-    hasOpenContradiction: row.hasOpenContradiction ?? undefined
+    hasOpenContradiction: row.hasOpenContradiction ?? undefined,
+    contactEmail: row.contactEmail ?? undefined
   };
 }
 
@@ -480,7 +482,8 @@ export class PrismaStore implements Store {
         ...(patch.reliabilityScore !== undefined ? { reliabilityScore: patch.reliabilityScore } : {}),
         ...(patch.qualityScore !== undefined ? { qualityScore: patch.qualityScore } : {}),
         ...(patch.pricePerUnit !== undefined ? { pricePerUnit: patch.pricePerUnit } : {}),
-        ...(patch.hasOpenContradiction !== undefined ? { hasOpenContradiction: patch.hasOpenContradiction } : {})
+        ...(patch.hasOpenContradiction !== undefined ? { hasOpenContradiction: patch.hasOpenContradiction } : {}),
+        ...(patch.contactEmail !== undefined ? { contactEmail: patch.contactEmail } : {})
       }
     });
     return toSupplier(row);

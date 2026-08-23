@@ -40,9 +40,10 @@ export async function GET(
   const productionOrder = await store.getProductionOrder(caseRecord.productionOrderId);
   const inventory = productionOrder ? await store.getInventoryRecordBySku(productionOrder.sku) : null;
   const doNothingVsNexus = buildComparison(productionOrder, inventory, purchaseOrders);
-  const [rfqs, supplierEligibility] = await Promise.all([
+  const [rfqs, supplierEligibility, supplierMessages] = await Promise.all([
     store.listRfqsByCase(id),
-    buildSupplierEligibility(store, productionOrder, inventory, purchaseOrders)
+    buildSupplierEligibility(store, productionOrder, inventory, purchaseOrders),
+    store.listSupplierMessagesByCase(id)
   ]);
   const disruptedSupplierId = purchaseOrders.find((po) => po.status !== "SENT")?.supplierId ?? null;
 
@@ -60,6 +61,7 @@ export async function GET(
     auditEvents,
     rfqs,
     supplierEligibility,
+    supplierMessages,
     disruptedSupplierId
   });
 }
