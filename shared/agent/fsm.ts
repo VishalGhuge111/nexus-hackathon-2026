@@ -263,25 +263,11 @@ async function handleVerify(
   }
   const po = linkedPOs[0];
 
-  // §12 requires "at least one independent tool call beyond the triggering
-  // signal" — purchase_order_lookup alone satisfies that. shipment_tracking_lookup
-  // is intentionally not also called here: in this simulation it derives its
-  // {lastEvent, status} directly from the same PurchaseOrder record (see
-  // shared/tools/primitives.ts), so calling both provides zero additional
-  // independent evidence while consuming a second tool-call-budget unit.
   const poResult = await dispatchTool(dispatchCtx, "purchase_order_lookup", () =>
     purchaseOrderLookup(store, po.id)
   );
 
   if (poResult.status !== "SUCCESS") {
-    // §12: "stays open but does not advance to PLAN — it re-checks next cycle
-    // (max 3 cycles before auto-escalating as 'unverifiable risk')." Cycle
-    // number doesn't advance on a stall (transition() is what increments it),
-    // so counting prior "VERIFY inconclusive" entries at the current cycle is
-    // exactly the retry count. Only poResult gates this — shipment_tracking_lookup
-    // is deliberately not also dispatched here (see the comment above); it
-    // would derive from the same PurchaseOrder record and cost a second
-    // tool-call-budget unit for zero additional independent evidence.
     const audits = await store.listAuditEvents(caseRecord.id);
     const verifyNoDataCount = audits.filter(
       (a) => a.summary.includes("VERIFY inconclusive: NO_DATA") && a.cycle === agentState.cycle
