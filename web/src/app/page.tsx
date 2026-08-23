@@ -1,10 +1,9 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
-import { Activity, AlertTriangle, CheckCircle2, ShieldAlert, Zap, ArrowUpRight } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, ShieldAlert, Target, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { EarlyWarningBanner } from "@/components/layout/EarlyWarningBanner";
-import { FactoryStatusBar } from "@/components/layout/FactoryStatusBar";
 import { IncidentGrid } from "@/components/dashboard/IncidentGrid";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
@@ -22,30 +21,48 @@ export default function Page() {
   const kpis = data?.kpis ?? null;
 
   const coverageDays = kpis?.coverageDaysRemaining ?? null;
-  const ordersSafe = kpis ? Math.max(0, Math.max(1, cases.length) - kpis.ordersAtRiskCount) : null;
   const recoveryCost = kpis?.emergencyBudgetRemaining ?? null;
+
+  const isWarning = coverageDays !== null && coverageDays >= 2 && coverageDays < 5;
+  const isCritical = coverageDays !== null && coverageDays < 2;
+
+  const statusBadge =
+    coverageDays === null
+      ? "bg-zinc-100 text-zinc-700 border-zinc-200"
+      : isCritical
+      ? "bg-red-50 text-red-700 border-red-200"
+      : isWarning
+      ? "bg-amber-50 text-amber-800 border-amber-200"
+      : "bg-emerald-50 text-emerald-800 border-emerald-200";
+
+  const statusLabel =
+    coverageDays === null
+      ? "Coverage Standby"
+      : isCritical
+      ? "Production at Risk"
+      : isWarning
+      ? "Early Risk Warning"
+      : "Production Protected";
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col h-full bg-zinc-50/70">
       {coverageDays !== null && <EarlyWarningBanner coverageDays={coverageDays} />}
-      <FactoryStatusBar
-        coverageDays={coverageDays}
-        ordersSafe={ordersSafe}
-        recoveryCost={recoveryCost}
-        currentGoal={cases.length > 0 ? "Resolve Active Disruption & Protect Continuity" : "Maintain Production Continuity"}
-      />
 
       <main className="max-w-7xl w-full mx-auto p-6 lg:p-8 space-y-6 flex-1">
-        {/* Header section with live operator context */}
-        <div className="flex items-center justify-between gap-4 flex-wrap border-b border-zinc-200/80 pb-5">
+        {/* Clean Dashboard Header without stacked horizontal bars */}
+        <div className="flex items-start justify-between gap-4 flex-wrap border-b border-zinc-200/80 pb-5">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
                 Operations Command
               </span>
               <span className="text-zinc-300">·</span>
               <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                 Autonomous Recovery
+              </span>
+              <span className="text-zinc-300">·</span>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border text-xs font-bold ${statusBadge}`}>
+                {statusLabel}
               </span>
             </div>
             <h1 className="mt-1 text-2xl lg:text-3xl font-bold tracking-tight text-zinc-900">

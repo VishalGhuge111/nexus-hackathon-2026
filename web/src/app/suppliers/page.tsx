@@ -1,7 +1,7 @@
 ﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Search, Building2, Package, Award, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Search, Building2 } from 'lucide-react';
 import { fetchSuppliers } from '../../lib/api-client';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -81,25 +81,19 @@ export default function SuppliersPage() {
         title="Supplier Network"
         description="Verified component vendor roster with capacity ceilings, ISO certifications, and historical reliability indexes."
         icon={<Building2 size={18} className="text-blue-600" />}
+        actions={
+          <div className="relative w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search vendors..."
+              className="w-full pl-8 pr-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+          </div>
+        }
       />
-
-      {/* Search Bar */}
-      <div className="bg-white border-b border-zinc-200/80 px-6 lg:px-8 py-3 shrink-0 flex items-center justify-between gap-4 flex-wrap shadow-2xs">
-        <div className="relative w-full max-w-md">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search suppliers by vendor name or identifier..."
-            className="w-full pl-9 pr-4 py-1.5 bg-zinc-50/80 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-          />
-        </div>
-
-        <span className="text-xs font-mono text-zinc-400">
-          Showing {filtered.length} of {suppliers?.length ?? 0} supplier(s)
-        </span>
-      </div>
 
       <div className="max-w-7xl w-full mx-auto p-6 lg:p-8 flex-1">
         {error ? (

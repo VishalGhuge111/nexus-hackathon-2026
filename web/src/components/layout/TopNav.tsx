@@ -1,6 +1,6 @@
 ﻿'use client';
 import React, { useState } from 'react';
-import { Bell, ShieldCheck, User, Search, CheckCircle2, Activity } from 'lucide-react';
+import { Bell, User, Search, CheckCircle2 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { bus } from '../../events/eventBus';
 
@@ -15,21 +15,14 @@ export function TopNav() {
 
   return (
     <header className="h-14 bg-white border-b border-zinc-200/80 flex items-center justify-between px-6 shrink-0 z-40 relative select-none">
-      {/* Brand & System Status */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-xs">
-            <ShieldCheck size={18} className="text-white" />
-          </div>
-          <span className="font-bold text-lg tracking-tight text-zinc-900">NEXUS</span>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-zinc-200/80">
+      {/* System Status: Autonomous Engine Live Indicator */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-semibold text-emerald-800 shadow-2xs">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="text-xs font-semibold text-zinc-600 tracking-tight">Autonomous Engine Active</span>
+          <span>Autonomous Engine Active</span>
         </div>
       </div>
 
@@ -57,13 +50,13 @@ export function TopNav() {
         >
           <Bell size={17} />
           {unreadCount > 0 && (
-            <span className="absolute 1.5 top-1.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-white">
+            <span className="absolute top-1.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-white">
               {unreadCount}
             </span>
           )}
         </button>
 
-        <div className="flex items-center gap-2 pl-2 border-l border-zinc-200/80">
+        <div className="flex items-center gap-2.5 pl-2 border-l border-zinc-200/80">
           <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-600">
             <User size={15} />
           </div>

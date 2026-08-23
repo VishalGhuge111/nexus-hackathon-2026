@@ -1,7 +1,7 @@
 ﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Clock, Search, Download, ShieldAlert, Cpu, Gavel, CheckCircle2, User, Radio } from 'lucide-react';
+import { Clock, Search, Download, Radio } from 'lucide-react';
 import { fetchAllAuditEvents } from '../../lib/api-client';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -90,34 +90,28 @@ export default function AuditPage() {
         description="Comprehensive cryptographically-ordered event log of all agent state transitions, tool invocations, and operator approvals."
         icon={<Clock size={18} className="text-blue-600" />}
         actions={
-          <button
-            onClick={exportCSV}
-            disabled={!events || events.length === 0}
-            className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Download size={14} className="text-zinc-500" />
-            <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Search audit trail..."
+                className="w-full pl-8 pr-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </div>
+            <button
+              onClick={exportCSV}
+              disabled={!events || events.length === 0}
+              className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Download size={14} className="text-zinc-500" />
+              <span>Export CSV</span>
+            </button>
+          </div>
         }
       />
-
-      {/* Filter Bar */}
-      <div className="bg-white border-b border-zinc-200/80 px-6 lg:px-8 py-3 shrink-0 flex items-center justify-between gap-4 flex-wrap shadow-2xs">
-        <div className="relative w-full max-w-md">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search by summary, Case ID, Actor, or Event type..."
-            className="w-full pl-9 pr-4 py-1.5 bg-zinc-50/80 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-          />
-        </div>
-
-        <span className="text-xs font-mono text-zinc-400">
-          Showing {filtered.length} of {events?.length ?? 0} event(s)
-        </span>
-      </div>
 
       <div className="max-w-5xl w-full mx-auto p-6 lg:p-8 flex-1">
         {error ? (

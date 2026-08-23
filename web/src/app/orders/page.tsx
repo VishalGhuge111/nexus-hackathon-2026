@@ -1,7 +1,7 @@
 ﻿'use client';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { FileText, Search, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { FileText, Search, ShieldAlert, ArrowUpRight } from 'lucide-react';
 import { fetchOrders } from '../../lib/api-client';
 import { CaseDetailOverlay } from '../../components/mission-control/CaseDetailOverlay';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -76,25 +76,19 @@ export default function OrdersPage() {
         title="Purchase Orders"
         description="Master procurement ledger with ground-truth supplier allocations and delivery commitments."
         icon={<FileText size={18} className="text-blue-600" />}
+        actions={
+          <div className="relative w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search POs..."
+              className="w-full pl-8 pr-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+          </div>
+        }
       />
-
-      {/* Search Filter Bar */}
-      <div className="bg-white border-b border-zinc-200/80 px-6 lg:px-8 py-3 shrink-0 flex items-center justify-between gap-4 flex-wrap shadow-2xs">
-        <div className="relative w-full max-w-md">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by PO ID, SKU, Supplier, or Status..."
-            className="w-full pl-9 pr-4 py-1.5 bg-zinc-50/80 border border-zinc-200 rounded-lg text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-          />
-        </div>
-
-        <span className="text-xs font-mono text-zinc-400">
-          Showing {filteredOrders.length} of {orders?.length ?? 0} order(s)
-        </span>
-      </div>
 
       <div className="max-w-7xl w-full mx-auto p-6 lg:p-8 flex-1">
         {error ? (
