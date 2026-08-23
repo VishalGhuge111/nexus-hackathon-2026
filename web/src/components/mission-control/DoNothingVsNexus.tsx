@@ -1,7 +1,4 @@
-// PRD §30 — "Do-Nothing vs NEXUS Plan... both computed by the same deterministic
-// formulas run under two scenarios... must never be hand-wavy text, only the two
-// computed scenarios side by side."
-import { formatINR } from "@/lib/missionControl/format";
+﻿import { formatINR } from "@/lib/missionControl/format";
 
 export interface ScenarioResult {
   coverageDays: number | null;
@@ -19,31 +16,66 @@ export function DoNothingVsNexus({
 }): React.ReactElement {
   return (
     <div>
-      <div className="mb-2 text-[11px] uppercase tracking-wide text-zinc-400">Do-Nothing vs NEXUS Plan (§30)</div>
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="text-left text-zinc-400">
-            <th className="pb-1 font-normal"></th>
-            <th className="pb-1 font-normal">Do Nothing</th>
-            <th className="pb-1 font-normal">NEXUS Plan</th>
-          </tr>
-        </thead>
-        <tbody>
-          <Row label="Deadline breached" a={doNothing.deadlineBreached ? "Yes" : "No"} b={nexusPlan.deadlineBreached ? "Yes" : "No"} />
-          <Row label="Units at risk" a={String(doNothing.unitsAtRisk)} b={String(nexusPlan.unitsAtRisk)} />
-          <Row label="Cost impact" a={formatINR(doNothing.costImpact)} b={formatINR(nexusPlan.costImpact)} />
-        </tbody>
-      </table>
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
+          Impact Comparison: Do-Nothing vs. NEXUS Recovery
+        </span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left">
+          <thead>
+            <tr className="text-zinc-400 font-bold uppercase tracking-wider text-[10px] border-b border-zinc-100 pb-1.5">
+              <th className="pb-1.5 font-semibold">Metric</th>
+              <th className="pb-1.5 font-semibold text-rose-700">Do-Nothing Baseline</th>
+              <th className="pb-1.5 font-semibold text-emerald-700">NEXUS Autonomous Plan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            <Row
+              label="Production Deadline Breached"
+              a={doNothing.deadlineBreached ? "YES (Breached)" : "NO"}
+              b={nexusPlan.deadlineBreached ? "YES" : "NO (Protected)"}
+              badA={doNothing.deadlineBreached}
+              goodB={!nexusPlan.deadlineBreached}
+            />
+            <Row
+              label="Manufacturing Units At Risk"
+              a={`${doNothing.unitsAtRisk} units lost`}
+              b={`${nexusPlan.unitsAtRisk} units lost`}
+              badA={doNothing.unitsAtRisk > 0}
+              goodB={nexusPlan.unitsAtRisk === 0}
+            />
+            <Row
+              label="Financial Impact / Net Cost"
+              a={formatINR(doNothing.costImpact)}
+              b={formatINR(nexusPlan.costImpact)}
+            />
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function Row({ label, a, b }: { label: string; a: string; b: string }): React.ReactElement {
+function Row({
+  label,
+  a,
+  b,
+  badA,
+  goodB
+}: {
+  label: string;
+  a: string;
+  b: string;
+  badA?: boolean;
+  goodB?: boolean;
+}): React.ReactElement {
   return (
-    <tr className="border-t border-zinc-100">
-      <td className="py-1.5 text-zinc-500">{label}</td>
-      <td className="py-1.5 font-mono text-zinc-500">{a}</td>
-      <td className="py-1.5 font-mono font-semibold text-zinc-900">{b}</td>
+    <tr>
+      <td className="py-2 text-zinc-600 font-medium">{label}</td>
+      <td className={`py-2 font-mono ${badA ? "text-red-600 font-bold" : "text-zinc-500"}`}>{a}</td>
+      <td className={`py-2 font-mono font-bold ${goodB ? "text-emerald-700" : "text-zinc-900"}`}>{b}</td>
     </tr>
   );
 }

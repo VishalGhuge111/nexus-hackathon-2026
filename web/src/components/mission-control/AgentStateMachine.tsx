@@ -1,8 +1,4 @@
-// PRD §10, Figure 2 (fig2_agent_execution_loop) — the exact sequence of states a
-// Case moves through. Rendered as a static pipeline (no animation) with the
-// current node highlighted; branch nodes are shown separately with the
-// condition that selects them, matching the diagram's own labeled edges.
-import type { CaseStatus } from "@nexus/shared/types/case";
+﻿import type { CaseStatus } from "@nexus/shared/types/case";
 
 const MAIN_PATH: CaseStatus[] = [
   "MONITORING",
@@ -16,74 +12,88 @@ const MAIN_PATH: CaseStatus[] = [
 ];
 
 const BRANCH_NODES: { id: CaseStatus; edge: string }[] = [
-  { id: "ADAPT_REPLAN", edge: "VALIDATE fails constraint, or VERIFY_OUTCOME shows the goal unmet → ADAPT_REPLAN → back to PLAN (V2, V3…)" },
-  { id: "HUMAN_ESCALATED_AWAITING_DECISION", edge: "EXECUTE_OR_ESCALATE: exceeds approval threshold / policy flag → awaiting human decision" },
-  { id: "NO_FEASIBLE_RECOVERY", edge: "ADAPT_REPLAN: no supplier/plan satisfies constraints after the replan cap" }
+  {
+    id: "ADAPT_REPLAN",
+    edge: "VALIDATE constraint failure or unmet outcome → trigger ADAPT_REPLAN → loop to PLAN (V2, V3…)"
+  },
+  {
+    id: "HUMAN_ESCALATED_AWAITING_DECISION",
+    edge: "EXECUTE_OR_ESCALATE: cost exceeds ₹10,000 threshold or policy flag → awaiting human decision"
+  },
+  {
+    id: "NO_FEASIBLE_RECOVERY",
+    edge: "ADAPT_REPLAN: no supplier or plan satisfies constraints after maximum replan attempts"
+  }
 ];
 
-function nodeClasses(isCurrent: boolean, isCompleted: boolean, isTerminalGood: boolean, isTerminalBad: boolean): string {
-  if (isCurrent) return "border-sky-400 bg-sky-50 text-sky-700 ring-2 ring-sky-200";
-  if (isCompleted && isTerminalGood) return "border-emerald-300 bg-emerald-50 text-emerald-700";
-  if (isCompleted) return "border-emerald-200 bg-emerald-50/70 text-emerald-600";
-  if (isTerminalBad) return "border-red-300 bg-red-50 text-red-600";
-  return "border-zinc-200 bg-zinc-50 text-zinc-400";
+function nodeClasses(
+  isCurrent: boolean,
+  isCompleted: boolean,
+  isTerminalGood: boolean,
+  isTerminalBad: boolean
+): string {
+  if (isCurrent) return "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200 font-bold";
+  if (isCompleted && isTerminalGood) return "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold";
+  if (isCompleted) return "border-emerald-200 bg-emerald-50/70 text-emerald-700 font-medium";
+  if (isTerminalBad) return "border-red-300 bg-red-50 text-red-700 font-semibold";
+  return "border-zinc-200 bg-zinc-50/80 text-zinc-400 font-normal";
 }
 
 export function AgentStateMachine({ currentStatus }: { currentStatus: CaseStatus }): React.ReactElement {
-  // A step already passed through reads as "done" (muted emerald) rather than
-  // identical to a step never reached yet (dim zinc) — the whole point of a
-  // pipeline view is to show progress, not just a static diagram with one dot
-  // lit up. MONITORING/EARLY_RISK_CHECK have no live equivalent in this
-  // reactive event-driven slice (case creation starts the case straight at
-  // VERIFY), so they only ever render as "not reached" or, once the case has
-  // moved on, implicitly completed.
   const currentIndex = MAIN_PATH.indexOf(currentStatus);
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="select-none">
+      <div className="flex flex-wrap items-center gap-1.5">
         {MAIN_PATH.map((status, i) => {
           const isCurrent = status === currentStatus;
           const isCompleted = !isCurrent && currentIndex !== -1 && i < currentIndex;
           return (
-            <div key={status} className="flex items-center gap-2">
+            <div key={status} className="flex items-center gap-1.5">
               <div
-                className={`rounded-md border px-2.5 py-1.5 font-mono text-xs font-medium ${nodeClasses(
+                className={`rounded-md border px-2 py-1 font-mono text-[11px] transition-colors ${nodeClasses(
                   isCurrent,
                   isCompleted,
                   status === "GOAL_ACHIEVED",
                   false
                 )}`}
               >
-                {isCompleted && <span className="mr-1 text-emerald-500">✓</span>}
+                {isCompleted && <span className="mr-1 text-emerald-600 font-bold">✓</span>}
                 {status.replace(/_/g, " ")}
-                {isCurrent && <span className="ml-1.5 text-sky-500">● live</span>}
+                {isCurrent && <span className="ml-1.5 text-blue-600 font-bold">● live</span>}
               </div>
               {i < MAIN_PATH.length - 1 && (
-                <span className={isCompleted ? "text-emerald-300" : "text-zinc-300"}>&rarr;</span>
+                <span className={`text-xs ${isCompleted ? "text-emerald-400 font-bold" : "text-zinc-300"}`}>
+                  →
+                </span>
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
-        <div className="text-[11px] uppercase tracking-wide text-zinc-400">Branches</div>
-        {BRANCH_NODES.map((branch) => (
-          <div key={branch.id} className="flex items-start gap-2 text-xs">
-            <div
-              className={`shrink-0 rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium ${nodeClasses(
-                branch.id === currentStatus,
-                false,
-                false,
-                branch.id === "NO_FEASIBLE_RECOVERY"
-              )}`}
-            >
-              {branch.id.replace(/_/g, " ")}
-              {branch.id === currentStatus && <span className="ml-1.5 text-sky-500">● live</span>}
+      <div className="mt-3.5 space-y-1.5 border-t border-zinc-100 pt-3">
+        <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
+          Conditional FSM Branching Rules
+        </div>
+        {BRANCH_NODES.map((branch) => {
+          const isCurrent = branch.id === currentStatus;
+          return (
+            <div key={branch.id} className="flex items-start gap-2 text-xs">
+              <div
+                className={`shrink-0 rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold ${nodeClasses(
+                  isCurrent,
+                  false,
+                  false,
+                  branch.id === "NO_FEASIBLE_RECOVERY"
+                )}`}
+              >
+                {branch.id.replace(/_/g, " ")}
+                {isCurrent && <span className="ml-1 text-blue-600">● live</span>}
+              </div>
+              <p className="text-zinc-500 text-[11px] leading-tight">{branch.edge}</p>
             </div>
-            <p className="text-zinc-400">{branch.edge}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

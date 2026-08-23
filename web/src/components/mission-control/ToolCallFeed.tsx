@@ -1,6 +1,5 @@
-// PRD §28 — "active tool calls streaming in with SUCCESS/FAILURE/NO_DATA badges."
-import type { AuditEvent } from "@nexus/shared/types/audit";
-import { StatusPill, toolResultTone } from "./StatusPill";
+﻿import type { AuditEvent } from "@nexus/shared/types/audit";
+import { StatusPill, toolStatusTone } from "./StatusPill";
 import { toolCallLabel } from "@/lib/missionControl/format";
 
 function isToolStatus(value: unknown): value is "SUCCESS" | "FAILURE" | "NO_DATA" {
@@ -12,23 +11,49 @@ export function ToolCallFeed({ auditEvents }: { auditEvents: AuditEvent[] }): Re
 
   return (
     <div>
-      <div className="mb-2 text-[11px] uppercase tracking-wide text-zinc-400">Recent tool calls</div>
-      <ul className="space-y-1">
-        {toolCalls.map((e) => {
-          const status = e.detail.status;
-          const toolName = e.detail.toolName ? String(e.detail.toolName) : null;
-          return (
-            <li key={e.id} className="flex items-center justify-between gap-2 text-xs">
-              <span className="text-zinc-700">
-                {toolName ? toolCallLabel(toolName) : e.summary}
-                {toolName && <span className="ml-1.5 font-mono text-zinc-400">{toolName}</span>}
-              </span>
-              {isToolStatus(status) && <StatusPill label={status} tone={toolResultTone(status)} />}
-            </li>
-          );
-        })}
-        {toolCalls.length === 0 && <li className="text-xs text-zinc-400">No tool calls yet.</li>}
-      </ul>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
+          Autonomous Tool Invocations ({toolCalls.length})
+        </div>
+        <span className="text-[10px] text-zinc-400 font-mono">Streaming Telemetry</span>
+      </div>
+
+      {toolCalls.length === 0 ? (
+        <div className="py-4 text-center text-xs text-zinc-400 bg-zinc-50/50 rounded-lg border border-dashed border-zinc-200">
+          No tool calls executed in current cycle.
+        </div>
+      ) : (
+        <ul className="space-y-1.5 max-h-48 overflow-y-auto scroll-thin">
+          {toolCalls.map((e) => {
+            const rawStatus = e.detail?.status;
+            const status: "SUCCESS" | "FAILURE" | "NO_DATA" = isToolStatus(rawStatus) ? rawStatus : "SUCCESS";
+            const toolName = e.detail?.toolName ? String(e.detail.toolName) : null;
+            const duration = typeof e.detail?.durationMs === "number" ? e.detail.durationMs : null;
+
+            return (
+              <li
+                key={e.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/60 px-3 py-2 text-xs"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-zinc-800 truncate">
+                    {toolName ? toolCallLabel(toolName) : e.summary}
+                  </span>
+                  {toolName && (
+                    <span className="font-mono text-[10px] text-zinc-400 bg-zinc-100 px-1 rounded">
+                      {toolName}
+                    </span>
+                  )}
+                  {duration !== null && (
+                    <span className="font-mono text-[10px] text-zinc-400">{duration}ms</span>
+                  )}
+                </div>
+                <StatusPill label={status} tone={toolStatusTone(status)} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

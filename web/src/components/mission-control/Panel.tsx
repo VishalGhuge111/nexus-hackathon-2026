@@ -1,40 +1,38 @@
-import type { ReactNode } from "react";
+﻿import type { PropsWithChildren, ReactNode } from "react";
 
-// "primary" marks the panels that carry the demo's story (active incident,
-// agent state, recovery plan, approval boundary); "secondary" (default) is
-// for supporting evidence — quieter heading, tighter type, softer border.
-export type PanelTone = "primary" | "secondary";
+export type PanelTone = "neutral" | "primary" | "warning" | "danger" | "success";
+
+const TONE_CLASSES: Record<PanelTone, { border: string; headerBg: string }> = {
+  neutral: { border: "border-zinc-200/80", headerBg: "bg-zinc-50/70" },
+  primary: { border: "border-blue-200/70", headerBg: "bg-blue-50/40" },
+  warning: { border: "border-amber-200/80", headerBg: "bg-amber-50/40" },
+  danger: { border: "border-red-200/80", headerBg: "bg-red-50/40" },
+  success: { border: "border-emerald-200/80", headerBg: "bg-emerald-50/40" }
+};
 
 export function Panel({
   title,
   subtitle,
+  tone = "neutral",
   headerRight,
-  children,
   className = "",
-  tone = "secondary"
-}: {
+  children
+}: PropsWithChildren<{
   title: string;
   subtitle?: string;
-  headerRight?: ReactNode;
-  children: ReactNode;
-  className?: string;
   tone?: PanelTone;
-}): React.ReactElement {
-  const isPrimary = tone === "primary";
+  headerRight?: ReactNode;
+  className?: string;
+}>): React.ReactElement {
+  const toneStyle = TONE_CLASSES[tone] ?? TONE_CLASSES.neutral;
   return (
-    <section className={`rounded-xl border border-zinc-200 bg-white shadow-sm ${className}`}>
-      <header className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-3.5">
-        <div>
-          <h2
-            className={`font-bold ${
-              isPrimary ? "text-[11px] tracking-[0.15em] text-zinc-900 uppercase" : "text-sm tracking-wide text-zinc-600"
-            }`}
-          >
-            {title}
-          </h2>
-          {subtitle && <p className="mt-1 text-[11px] leading-snug text-zinc-400">{subtitle}</p>}
+    <section className={`rounded-xl border ${toneStyle.border} bg-white shadow-2xs overflow-hidden transition-all select-none ${className}`}>
+      <header className={`flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-3.5 ${toneStyle.headerBg}`}>
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-zinc-900 tracking-tight">{title}</h2>
+          {subtitle && <p className="text-[11px] text-zinc-500 font-medium mt-0.5 truncate">{subtitle}</p>}
         </div>
-        {headerRight}
+        {headerRight && <div className="shrink-0">{headerRight}</div>}
       </header>
       <div className="p-5">{children}</div>
     </section>

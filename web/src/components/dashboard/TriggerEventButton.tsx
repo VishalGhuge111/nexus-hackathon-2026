@@ -1,12 +1,7 @@
-'use client';
+﻿'use client';
 
-// Real judge/demo control — calls the real POST /api/agent/event contract
-// (shared/agent/events.ts) instead of requiring curl. No optimistic/fake
-// success: the button shows its real network state, and surfaces the real
-// error text from the API on failure (e.g. "already an active case for this
-// production order").
 import { useState } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { PlayCircle, Loader2, Sparkles } from 'lucide-react';
 import { triggerShipmentDelay } from '../../lib/api-client';
 
 export function TriggerEventButton({ onTriggered }: { onTriggered?: (caseId: string) => void }) {
@@ -31,12 +26,13 @@ export function TriggerEventButton({ onTriggered }: { onTriggered?: (caseId: str
       <button
         onClick={handleClick}
         disabled={loading}
-        className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs transition-all hover:bg-blue-700 hover:shadow-xs active:scale-98 disabled:cursor-not-allowed disabled:opacity-60"
+        title="Trigger 24h shipment delay simulation on COMP-ALPHA"
       >
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <AlertTriangle size={16} />}
-        {loading ? 'Triggering…' : 'Trigger Shipment Delay 24h'}
+        {loading ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
+        <span>{loading ? 'Simulating Disruption…' : 'Simulate 24h Delay'}</span>
       </button>
-      {error && <span className="text-xs text-red-600 max-w-xs text-right">{error}</span>}
+      {error && <span className="text-[11px] font-medium text-red-600 max-w-xs text-right">{error}</span>}
     </div>
   );
 }
