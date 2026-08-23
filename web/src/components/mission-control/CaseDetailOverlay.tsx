@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, ArrowLeft } from "lucide-react";
+import { X, ArrowLeft, ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusPill, caseStatusTone } from "./StatusPill";

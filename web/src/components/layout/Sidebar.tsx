@@ -11,8 +11,7 @@ import {
   Settings,
   FlaskConical,
   ChevronLeft,
-  ChevronRight,
-  ShieldCheck
+  ChevronRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -57,16 +56,19 @@ function NavGroup({
         <div className="w-6 h-px bg-zinc-200 mx-auto mb-2.5" />
       )}
       <div className="space-y-1">
-        {items.map(({ icon: Icon, label: itemLabel, href }) => {
-          const active = pathname === href;
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = pathname === item.href;
+          const itemLabel = item.label;
+
           return (
             <Link
-              key={itemLabel}
-              href={href}
-              className={`w-full flex cursor-pointer items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-[13.5px] relative group select-none ${
+              key={item.href}
+              href={item.href}
+              className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-all select-none ${
                 active
-                  ? 'text-blue-700 bg-blue-50 font-bold shadow-2xs'
-                  : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/90 font-medium'
+                  ? 'bg-blue-50/80 text-blue-700 font-semibold'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100/70'
               }`}
             >
               {active && (
@@ -106,19 +108,29 @@ export function Sidebar() {
         transition={{ duration: 0.18, ease: 'easeOut' }}
         className="relative bg-white border-r border-zinc-200/80 h-full flex flex-col overflow-hidden select-none"
       >
-        {/* Brand Header */}
+        {/* Brand Header with Official Logo */}
         <div className="h-14 flex items-center px-4 border-b border-zinc-100 shrink-0 gap-3">
-          <div className="w-8.5 h-8.5 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
-            <ShieldCheck size={19} />
-          </div>
-          {expanded && (
-            <div className="truncate">
-              <span className="font-bold text-base text-zinc-900 tracking-tight">NEXUS</span>
-              <span className="ml-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">
-                OPS
-              </span>
-            </div>
-          )}
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/high-resolution-color-logo.png"
+              alt="NEXUS Logo"
+              className="w-8.5 h-8.5 rounded-lg object-contain shrink-0 shadow-2xs border border-zinc-200/60 bg-white p-0.5"
+            />
+            {expanded && (
+              <div className="truncate leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-[15px] text-zinc-900 tracking-tight">NEXUS</span>
+                  <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded uppercase border border-blue-100/80">
+                    OPS
+                  </span>
+                </div>
+                <p className="text-[9.5px] font-medium text-zinc-400 truncate mt-0.5">
+                  Autonomous Recovery. Zero-Trust Sourcing.
+                </p>
+              </div>
+            )}
+          </Link>
         </div>
 
         {/* Grouped Navigation Links */}
@@ -133,16 +145,16 @@ export function Sidebar() {
         <div className="p-2.5 border-t border-zinc-100 flex items-center justify-center">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-full py-2 flex items-center justify-center gap-2 rounded-xl text-xs font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+            className="w-full py-2 flex items-center justify-center gap-2 rounded-xl text-xs font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer"
             title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {expanded ? (
               <>
-                <ChevronLeft size={15} />
-                <span className="text-xs font-medium">Collapse Menu</span>
+                <ChevronLeft size={16} />
+                <span>Collapse Menu</span>
               </>
             ) : (
-              <ChevronRight size={15} />
+              <ChevronRight size={16} />
             )}
           </button>
         </div>
