@@ -40,7 +40,17 @@ export interface SupplierClaimContradictionPayload {
 
 async function attachOrCreateCase(store: Store, productionOrderId: string, now: Date): Promise<string> {
   const existing = await store.findCaseByProductionOrder(productionOrderId);
-  if (existing) return existing.id;
+  if (existing) {
+    if (existing.status === "MONITORING") {
+      await store.updateCase(existing.id, { status: "EARLY_RISK_CHECK" });
+      const state = await store.getAgentState(existing.id);
+      if (state) {
+        state.currentStep = "EARLY_RISK_CHECK";
+        await store.upsertAgentState(state);
+      }
+    }
+    return existing.id;
+  }
 
   const productionOrder = await store.getProductionOrder(productionOrderId);
   if (!productionOrder) throw new Error(`ProductionOrder ${productionOrderId} not found`);
