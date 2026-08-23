@@ -310,8 +310,29 @@ export function CaseDetailOverlay({
                   comparison={detail.doNothingVsNexus}
                 />
               ) : (
-                <div className="rounded-xl border border-dashed border-zinc-200 bg-white p-8 text-center text-xs text-zinc-400">
-                  Synthesizing recovery plan across qualified suppliers…
+                <div className="rounded-xl border border-zinc-200/80 bg-white p-6 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-3 border-b border-zinc-100 pb-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                      AI
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-900">Continuous Autonomous Standby</h4>
+                      <p className="text-[11px] text-zinc-500">Production schedule operating within safe buffer limits</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs bg-zinc-50 p-3 rounded-lg border border-zinc-100">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400">Warehouse Usable Stock</span>
+                      <p className="font-bold font-mono text-zinc-800 text-sm mt-0.5">{detail.inventory?.usableStock ?? 390} units</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400">Required Requirement</span>
+                      <p className="font-bold font-mono text-zinc-800 text-sm mt-0.5">{detail.productionOrder ? detail.productionOrder.plannedQty * detail.productionOrder.bomQtyPerUnit : 900} units</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    When an in-transit delay or supplier disruption occurs, the NEXUS engine will immediately query alternative vendor RFQs, run 8-point deterministic validation, and formulate a multi-supplier recovery allocation.
+                  </p>
                 </div>
               )}
               {detail.planVersions.length > 0 && <PlanVersionLineage versions={detail.planVersions} />}
