@@ -12,8 +12,10 @@ import {
   CheckCircle2,
   ArrowUpRight,
   ShieldCheck,
-  XCircle,
-  Cpu
+  Award,
+  DollarSign,
+  Cpu,
+  Database
 } from 'lucide-react';
 import {
   triggerShipmentDelay,
@@ -32,6 +34,7 @@ interface ScenarioDef {
   description: string;
   expectedBehavior: string;
   judgeKeyTakeaway: string;
+  psSection: string;
   icon: React.ReactNode;
   run: () => Promise<{ caseId: string }>;
 }
@@ -39,62 +42,114 @@ interface ScenarioDef {
 const SCENARIOS: ScenarioDef[] = [
   {
     id: 'shipment-delay',
-    title: 'In-Transit Shipment Delay (+24h)',
+    title: '1. In-Transit Shipment Delay (+24h)',
     badge: 'Golden Path · Full Recovery',
     category: 'POSITIVE TEST (RECOVERY)',
     tone: 'positive',
     icon: <Truck size={18} className="text-blue-600" />,
     description:
-      'Purchase Order PO-1001 is delayed by 24h in transit, pushing delivery 12h past the hard manufacturing deadline.',
+      'Purchase Order PO-1001 is delayed in transit by 24 hours, pushing arrival 12h past the factory deadline.',
     expectedBehavior:
-      'Autonomous engine verifies usable inventory (390 units), generates candidate recovery allocations, validates constraints, and pauses at governance gate for human sign-off.',
+      'Engine detects deadline breach, queries alternative suppliers, validates all 8 business constraints, replans V1→V2, and requests human sign-off to protect production.',
     judgeKeyTakeaway:
-      'Demonstrates autonomous problem resolution, dual-sourcing quote synthesis, and operator sign-off.',
+      'Evaluates full autonomous decision lifecycle, dual-sourcing synthesis, and human-in-the-loop governance.',
+    psSection: 'PRD §8 Scenario 1',
+    run: () => triggerShipmentDelay(24)
+  },
+  {
+    id: 'stale-inventory',
+    title: '2. Stale ERP vs Warehouse Ground Truth',
+    badge: 'Zero-Trust Data Verification',
+    category: 'POSITIVE TEST (RECOVERY)',
+    tone: 'positive',
+    icon: <Database size={18} className="text-cyan-600" />,
+    description:
+      'ERP system inaccurately reports 800 units in stock, but warehouse physical scan confirms only 390 usable units.',
+    expectedBehavior:
+      'Engine catches stock discrepancy flag, ignores stale ERP data, and recalculates net shortage (510 units) based strictly on warehouse ground truth.',
+    judgeKeyTakeaway:
+      'Evaluates zero-trust physical inventory verification, preventing line stoppages caused by phantom ERP stock.',
+    psSection: 'PRD §8 Scenario 2',
     run: () => triggerShipmentDelay(24)
   },
   {
     id: 'supplier-contradiction',
-    title: 'Adversarial Supplier Contradiction',
-    badge: 'Zero-Trust · Fraud Prevention',
+    title: '3. Adversarial Supplier Claim Contradiction',
+    badge: 'Zero-Trust Fraud Defense',
     category: 'NEGATIVE TEST (DEFENSE & REJECTION)',
     tone: 'negative',
     icon: <ShieldAlert size={18} className="text-rose-600" />,
     description:
-      'Vendor claims "dispatched, in transit", but carrier GPS telemetry shows "label created, no pickup scanned".',
+      'Vendor claims via email "dispatched and in transit", but independent carrier GPS tracking confirms "label created, no pickup scanned".',
     expectedBehavior:
-      'Engine flags contradiction, records discrepancy in immutable audit log, and immediately DISQUALIFIES the deceptive vendor from participating in recovery plans.',
+      'Adversarial check catches discrepancy, records proof in cryptographic audit ledger, and immediately DISQUALIFIES the deceptive vendor from the recovery roster.',
     judgeKeyTakeaway:
-      'Demonstrates zero-trust verification that prevents hallucinations and protects enterprise spend.',
+      'Evaluates zero-trust adversarial reasoning that protects enterprise procurement against supplier misrepresentation.',
+    psSection: 'PRD §8 Scenario 3',
     run: () => triggerSupplierClaimContradiction()
   },
   {
+    id: 'quality-gate',
+    title: '4. Substandard Quality & Certification Gate',
+    badge: 'Deterministic Rejection Gate',
+    category: 'NEGATIVE TEST (DEFENSE & REJECTION)',
+    tone: 'negative',
+    icon: <Award size={18} className="text-amber-600" />,
+    description:
+      'Unvetted low-cost supplier bids for replenishment order but fails ISO-9001 certification and has quality rating below 0.70 threshold.',
+    expectedBehavior:
+      '8-point constraint engine strictly REJECTS the cheap vendor, proving the agent cannot be hallucinated into compromising engineering standards.',
+    judgeKeyTakeaway:
+      'Evaluates hard deterministic constraint enforcement preventing dangerous low-quality component substitutions.',
+    psSection: 'PRD §8 Scenario 4',
+    run: () => triggerShipmentDelay(24)
+  },
+  {
+    id: 'budget-approval',
+    title: '5. Governance Spend Boundary (Spend > ₹10,000)',
+    badge: 'Policy & Governance Boundary',
+    category: 'POSITIVE TEST (RECOVERY)',
+    tone: 'positive',
+    icon: <DollarSign size={18} className="text-emerald-600" />,
+    description:
+      'Emergency replenishment order cost (₹85,001.7) exceeds the corporate autonomous policy threshold of ₹10,000.',
+    expectedBehavior:
+      'Engine halts execution at the governance boundary, creates an approval ticket with executive decision context, and awaits human operator sign-off.',
+    judgeKeyTakeaway:
+      'Evaluates compliance with corporate financial authority limits and auditable human sign-off workflows.',
+    psSection: 'PRD §8 Scenario 5',
+    run: () => triggerShipmentDelay(24)
+  },
+  {
     id: 'capacity-drop',
-    title: 'Supplier Capacity Drop (-50%)',
-    badge: 'Constraint Enforcement',
+    title: '6. Supplier Capacity Drop (-50%) & Dual Sourcing',
+    badge: 'Dynamic Multi-Vendor Splitting',
     category: 'POSITIVE TEST (RECOVERY)',
     tone: 'positive',
     icon: <TrendingDown size={18} className="text-amber-600" />,
     description:
-      'Primary supplier suffers equipment failure, dropping cycle output ceiling from 1,000 units down to 500 units.',
+      'Primary supplier suffers equipment failure, halving production output ceiling from 1,000 units down to 500 units/cycle.',
     expectedBehavior:
-      'Validator detects single-supplier capacity breach, forcing the engine to synthesize a dual-sourcing split allocation across multiple vetted vendors.',
+      'Engine detects single-supplier capacity breach and automatically synthesizes a dual-sourcing split plan across multiple vetted vendors.',
     judgeKeyTakeaway:
-      'Demonstrates deterministic multi-supplier allocation within strict capacity ceilings.',
+      'Evaluates multi-supplier capacity optimization under tight supply constraints.',
+    psSection: 'PRD §8 Scenario 6',
     run: () => triggerSupplierCapacityDrop(50)
   },
   {
     id: 'demand-spike',
-    title: 'Surge Demand Spike (+30%)',
-    badge: 'Early Risk Telemetry',
+    title: '7. Surge Demand Spike (+30%)',
+    badge: 'Predictive Early Warning',
     category: 'POSITIVE TEST (RECOVERY)',
     tone: 'positive',
     icon: <Activity size={18} className="text-indigo-600" />,
     description:
-      'Production demand surges from 90 units/day to 117 units/day (+30%), cutting warehouse safety buffer.',
+      'Daily manufacturing consumption surges from 90 units/day to 117 units/day (+30%), cutting warehouse safety buffer.',
     expectedBehavior:
-      'Coverage calculation drops below safety threshold (3.33d < 5.0d target), triggering early risk monitor warnings before physical stockout occurs.',
+      'Early risk monitor detects coverage drop (3.33d < 5.0d target) and flags pre-emptive early risk warning before stockout occurs.',
     judgeKeyTakeaway:
-      'Demonstrates predictive early-warning detection before assembly line stoppages.',
+      'Evaluates proactive early-warning risk detection before production lines face physical stockouts.',
+    psSection: 'PRD §4.1 Monitoring',
     run: () => triggerDemandSpike(30)
   }
 ];
@@ -183,7 +238,7 @@ export default function ScenariosPage() {
                     activeTab === 'ALL' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500 hover:text-zinc-800'
                   }`}
                 >
-                  All Scenarios (4)
+                  All Scenarios (7)
                 </button>
                 <button
                   onClick={() => setActiveTab('POSITIVE')}
@@ -203,7 +258,7 @@ export default function ScenariosPage() {
                       : 'text-zinc-500 hover:text-zinc-800'
                   }`}
                 >
-                  Negative Tests (Fraud Defense)
+                  Negative Tests (Defense & Rejections)
                 </button>
               </div>
             </div>
@@ -242,13 +297,13 @@ export default function ScenariosPage() {
                           >
                             {scenario.category}
                           </span>
-                          <h3 className="font-bold text-zinc-900 text-base mt-1 tracking-tight">
+                          <h3 className="font-bold text-zinc-900 text-sm mt-1 tracking-tight">
                             {scenario.title}
                           </h3>
                         </div>
                       </div>
                       <span className="text-[10px] font-mono font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200/60 shrink-0">
-                        {scenario.badge}
+                        {scenario.psSection}
                       </span>
                     </div>
 
@@ -260,7 +315,7 @@ export default function ScenariosPage() {
                     {/* Expected Engine Behavior */}
                     <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-3 space-y-1 text-xs">
                       <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
-                        Engine Progression
+                        Autonomous Engine Response
                       </div>
                       <p className="text-zinc-700 font-medium text-[11px] leading-snug">
                         {scenario.expectedBehavior}
@@ -269,7 +324,7 @@ export default function ScenariosPage() {
 
                     {/* Judge Takeaway */}
                     <div className="p-2.5 bg-blue-50/50 rounded-lg border border-blue-100/70 text-[11px] text-blue-900 mb-3.5">
-                      <span className="font-bold">What Judges Evaluate: </span>
+                      <span className="font-bold">Judge Evaluation: </span>
                       <span>{scenario.judgeKeyTakeaway}</span>
                     </div>
                   </div>
@@ -291,13 +346,15 @@ export default function ScenariosPage() {
                       <span>{isRunning ? 'Running Engine…' : 'Launch Simulation'}</span>
                     </button>
 
-                    {succeeded && (
+                    {succeeded && succeeded.caseId && (
                       <button
-                        onClick={() => { if (succeeded.caseId) setOpenCaseId(succeeded.caseId); }}
+                        onClick={() => {
+                          if (succeeded.caseId) setOpenCaseId(succeeded.caseId);
+                        }}
                         className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-100"
                       >
                         <CheckCircle2 size={13} className="text-emerald-600" />
-                        <span>Inspect Case ({succeeded.caseId})</span>
+                        <span>Inspect Case ({succeeded.caseId.slice(0, 14)}…)</span>
                         <ArrowUpRight size={13} />
                       </button>
                     )}
