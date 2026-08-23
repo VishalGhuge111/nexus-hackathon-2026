@@ -50,11 +50,11 @@ function NavGroup({
   return (
     <div className="mb-4">
       {expanded ? (
-        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-3 mb-1.5 select-none">
+        <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider px-3 mb-2 select-none">
           {label}
         </p>
       ) : (
-        <div className="w-6 h-px bg-zinc-200 mx-auto mb-2" />
+        <div className="w-6 h-px bg-zinc-200 mx-auto mb-2.5" />
       )}
       <div className="space-y-1">
         {items.map(({ icon: Icon, label: itemLabel, href }) => {
@@ -63,27 +63,27 @@ function NavGroup({
             <Link
               key={itemLabel}
               href={href}
-              className={`w-full flex cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-all text-xs relative group select-none ${
+              className={`w-full flex cursor-pointer items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-[13.5px] relative group select-none ${
                 active
                   ? 'text-blue-700 bg-blue-50 font-bold shadow-2xs'
-                  : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium'
+                  : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/90 font-medium'
               }`}
             >
               {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-blue-600 rounded-r-md" />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.25 h-6 bg-blue-600 rounded-r-md" />
               )}
               <Icon
-                size={17}
-                strokeWidth={active ? 2.4 : 1.9}
+                size={18}
+                strokeWidth={active ? 2.3 : 1.85}
                 className={`shrink-0 transition-transform group-hover:scale-105 ${
                   active ? 'text-blue-600' : 'text-zinc-400 group-hover:text-zinc-800'
                 }`}
               />
-              {expanded && <span className="truncate tracking-tight">{itemLabel}</span>}
+              {expanded && <span className="truncate tracking-tight leading-none">{itemLabel}</span>}
 
               {/* Floating Tooltip in collapsed mode */}
               {!expanded && (
-                <span className="pointer-events-none absolute left-full ml-3 z-50 whitespace-nowrap rounded-md bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                <span className="pointer-events-none absolute left-full ml-3 z-50 whitespace-nowrap rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                   {itemLabel}
                 </span>
               )}
@@ -102,19 +102,19 @@ export function Sidebar() {
   return (
     <div className="relative h-full shrink-0 z-30">
       <motion.aside
-        animate={{ width: expanded ? 220 : 64 }}
+        animate={{ width: expanded ? 232 : 68 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
         className="relative bg-white border-r border-zinc-200/80 h-full flex flex-col overflow-hidden select-none"
       >
         {/* Brand Header */}
         <div className="h-14 flex items-center px-4 border-b border-zinc-100 shrink-0 gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
-            <ShieldCheck size={18} />
+          <div className="w-8.5 h-8.5 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+            <ShieldCheck size={19} />
           </div>
           {expanded && (
             <div className="truncate">
               <span className="font-bold text-base text-zinc-900 tracking-tight">NEXUS</span>
-              <span className="ml-1.5 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">
+              <span className="ml-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">
                 OPS
               </span>
             </div>
@@ -122,7 +122,7 @@ export function Sidebar() {
         </div>
 
         {/* Grouped Navigation Links */}
-        <nav className="flex-1 px-2.5 py-3 overflow-y-auto overflow-x-hidden scroll-thin">
+        <nav className="flex-1 px-3 py-3.5 overflow-y-auto overflow-x-hidden scroll-thin">
           <NavGroup label="Overview" items={OVERVIEW} expanded={expanded} pathname={pathname} />
           <NavGroup label="Operations" items={OPERATIONS} expanded={expanded} pathname={pathname} />
           <NavGroup label="Governance" items={GOVERNANCE} expanded={expanded} pathname={pathname} />
@@ -130,19 +130,19 @@ export function Sidebar() {
         </nav>
 
         {/* Footer Collapse Action */}
-        <div className="p-2 border-t border-zinc-100 flex items-center justify-center">
+        <div className="p-2.5 border-t border-zinc-100 flex items-center justify-center">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-full py-1.5 flex items-center justify-center gap-2 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+            className="w-full py-2 flex items-center justify-center gap-2 rounded-xl text-xs font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
             title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {expanded ? (
               <>
-                <ChevronLeft size={14} />
-                <span className="text-[11px]">Collapse Menu</span>
+                <ChevronLeft size={15} />
+                <span className="text-xs font-medium">Collapse Menu</span>
               </>
             ) : (
-              <ChevronRight size={14} />
+              <ChevronRight size={15} />
             )}
           </button>
         </div>
