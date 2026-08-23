@@ -104,8 +104,10 @@ graph LR
   6. *Supplier Capacity Drop (-50%)*: Dynamic dual-sourcing split across multiple vendors.
   7. *Surge Demand Spike (+30%)*: Proactive early-risk warning before physical stockouts.
 * **Mission Control & Incident Overlay**: Real-time FSM pipeline visualizer, live agent tool trace, plain-English validator checklist with expandable technical math, and supplier quote comparisons.
-* **Simulated Supplier Communication & Email Feed**: Live outbound Brevo RFQ dispatches and structured inbound quote extractions.
-* **Live Web Notification & Alert Drawer**: Top navigation alert center with real-time incident notifications.
+* **Simulated Multi-Supplier & Buyer Ecosystem**: 6 diverse vendors (Tier-1, Tier-2, Aerospace, Electronics, Cheap-Cast) supporting OEM assembly lines (*Tata Motors EV, Mahindra Aerospace, Bajaj Auto, Bharat Forge*).
+* **Multi-Carrier Logistics Telemetry**: Live transit routes and tracking telemetry (*Blue Dart Surface, DHL Express Air, Gati-KWE*).
+* **Live Outbound Brevo RFQ Emailing & Supplier Communication Feed**: Real-time outbound transactional emails dispatched to suppliers and inbound quote extractions.
+* **Live Web Notification & Alert Center**: Top navigation alert center with real-time sync for pending approvals, fraud flags, and state transitions.
 * **Immutable Audit Trail (`/audit`)**: Cryptographic event ledger with actor filters (`AGENT`, `HUMAN`, `SYSTEM`) and case traceability.
 
 ### What is Excluded from MVP (Future Scope):
@@ -117,7 +119,7 @@ graph LR
 ## 7. Impact and Feasibility
 
 * **Business Impact**: Eliminates costly line stoppages (saving ₹50,000–₹2,00,000/hour in automotive/electronics manufacturing), cuts recovery response time from 4–6 hours to under 30 seconds, and prevents rogue autonomous financial spending.
-* **Feasibility & Robustness**: Validated with **90/90 passing automated unit & integration tests**, 0 TypeScript errors, clean production builds, and sub-100ms deterministic state transitions.
+* **Feasibility & Robustness**: Validated with **90/90 passing automated unit & integration tests across 22 test suites**, 0 TypeScript errors, clean production builds, and sub-100ms deterministic state transitions.
 * **Risk & Mitigation**:
   * *Risk*: Supplier communicates in non-standard free text. $\rightarrow$ *Mitigation*: LLM extracts structured fields with deterministic fallback validation.
   * *Risk*: LLM hallucinations in procurement cost. $\rightarrow$ *Mitigation*: Strict architectural separation where LLMs never compute prices or quantities.
