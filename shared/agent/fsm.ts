@@ -141,7 +141,6 @@ async function runAgentTickInternal(
   agentState.lastToolCalls = [];
 
   switch (caseRecord.status) {
-    case "MONITORING":
     case "EARLY_RISK_CHECK":
       return handleEarlyRiskCheck(deps, caseRecord, agentState, now);
     case "VERIFY":

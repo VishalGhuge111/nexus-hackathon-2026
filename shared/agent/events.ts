@@ -38,16 +38,36 @@ export interface SupplierClaimContradictionPayload {
   trackingStatus: string;
 }
 
+// Statuses runAgentTick's switch (shared/agent/fsm.ts) does not advance on its
+// own — "OPEN / MONITORING not exercised by the reactive event path in this
+// slice" (see that file's default case). A case can land in MONITORING via a
+// legitimate VERIFY outcome (false positive, or no linked PO yet); without this
+// reopen, a case parked there is permanently reused-but-never-reinvestigated by
+// every later disruption event on the same production order, which is exactly
+// the "Trigger Shipment Delay looks stuck" failure mode: the button succeeds,
+// the PO gets linked/delayed, but the case just sits in MONITORING forever.
+const REOPEN_ON_NEW_EVENT = new Set(["MONITORING", "OPEN"]);
+
 async function attachOrCreateCase(store: Store, productionOrderId: string, now: Date): Promise<string> {
   const existing = await store.findCaseByProductionOrder(productionOrderId);
   if (existing) {
-    if (existing.status === "MONITORING") {
+    if (REOPEN_ON_NEW_EVENT.has(existing.status)) {
       await store.updateCase(existing.id, { status: "EARLY_RISK_CHECK" });
-      const state = await store.getAgentState(existing.id);
-      if (state) {
-        state.currentStep = "EARLY_RISK_CHECK";
-        await store.upsertAgentState(state);
+      const agentState = await store.getAgentState(existing.id);
+      if (agentState) {
+        agentState.currentStep = "EARLY_RISK_CHECK";
+        await store.upsertAgentState(agentState);
       }
+      await store.appendAuditEvent({
+        id: newId("audit"),
+        caseId: existing.id,
+        cycle: agentState?.cycle ?? 0,
+        timestamp: now.toISOString(),
+        actor: "SYSTEM",
+        type: "STATE_TRANSITION",
+        summary: `Case reopened for re-investigation after a new disruption event (was ${existing.status})`,
+        detail: { previousStatus: existing.status }
+      });
     }
     return existing.id;
   }
