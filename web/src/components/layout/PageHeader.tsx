@@ -21,7 +21,7 @@ export function PageHeader({ title, description, icon, actions, showBack }: Page
           {showBack && (
             <button 
               onClick={() => router.back()} 
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors shadow-sm"
+              className="w-9 h-9 flex cursor-pointer items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors shadow-sm"
               title="Go back"
             >
               <ArrowLeft size={18} />

@@ -95,7 +95,7 @@ export function IncidentGrid({ cases, loading = false, selectedId, onSelect }: I
                   e.stopPropagation();
                   onSelect && onSelect(c.id);
                 }}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${isSelected ? 'bg-blue-50 text-blue-700' : 'bg-zinc-900 text-white hover:bg-blue-600'}`}
+                className={`w-full flex cursor-pointer items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${isSelected ? 'bg-blue-50 text-blue-700' : 'bg-zinc-900 text-white hover:bg-blue-600'}`}
               >
                 {isSelected ? (
                   <><PlayCircle size={16} /> Mission Active</>

@@ -120,7 +120,7 @@ export default function OrdersPage() {
                         {o.caseId ? (
                           <button
                             onClick={() => setOpenCaseId(o.caseId!)}
-                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium text-xs uppercase tracking-wider"
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium text-xs uppercase tracking-wider"
                           >
                             <ShieldAlert size={13} /> {o.caseId}
                           </button>

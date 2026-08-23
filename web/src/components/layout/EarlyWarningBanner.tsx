@@ -25,7 +25,7 @@ export function EarlyWarningBanner({ coverageDays }: { coverageDays: number }) {
                 <span className="text-amber-600 ml-2">· Alternative suppliers identified and prepared</span>
               </span>
             </div>
-            <button onClick={() => setDismissed(true)} className="text-amber-500 hover:text-amber-700 ml-4">
+            <button onClick={() => setDismissed(true)} className="cursor-pointer text-amber-500 hover:text-amber-700 ml-4">
               <X size={15} />
             </button>
           </div>

@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
               <button
                 key={p}
                 onClick={() => setWeeks(p)}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${weeks === p ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
+                className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${weeks === p ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
               >
                 {p}w
               </button>

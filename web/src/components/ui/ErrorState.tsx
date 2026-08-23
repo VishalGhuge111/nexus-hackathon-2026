@@ -19,7 +19,7 @@ export function ErrorState({
         {onRetry && (
           <button
             onClick={onRetry}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-50"
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-50"
           >
             <RefreshCw size={12} /> Retry
           </button>
@@ -40,7 +40,7 @@ export function ErrorState({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-1 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+          className="mt-1 flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
         >
           <RefreshCw size={14} /> Retry
         </button>

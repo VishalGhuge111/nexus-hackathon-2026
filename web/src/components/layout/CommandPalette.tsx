@@ -40,7 +40,7 @@ export function CommandPalette() {
               placeholder="Search or jump to... (Actions, Cases, Routes)" 
               className="flex-1 h-12 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-base"
             />
-            <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-zinc-100 text-zinc-400">
+            <button onClick={() => setOpen(false)} className="cursor-pointer p-1 rounded hover:bg-zinc-100 text-zinc-400">
               <X size={16} />
             </button>
           </div>
